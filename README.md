@@ -14,12 +14,15 @@ The full spec, metric definitions, decision log, and per-phase manual test check
 | `/users`              | Users table: search by name or ID (partial, case-insensitive), status filter, sort by Join Time, pagination, CSV export |
 | `/user/:id`           | User details and profile, full-size image modal, search by exact user ID, link to sessions      |
 | `/user/:id/sessions`  | Sessions table for one user: device filter, sort by duration, pagination, CSV export            |
-
-"Export CSV" downloads every row matching the current search/filters (all pages, current sort)
-with the original CSV columns.
 | `/analytics`          | Total users, average session duration, deleted user %, and DAU / New vs Returning / app version charts |
 
 `/` redirects to `/users`; unknown routes and unknown user IDs show a "not found" state.
+
+"Export CSV" downloads every row matching the current search/filters (all pages, current sort)
+with the original CSV columns.
+
+Table settings are remembered in `localStorage` across visits: search, status filter, sort, page,
+and page size on Users; device filter, sort, and page size on Sessions (shared across users).
 
 A light/dark theme toggle sits in the header. The first visit follows the OS setting; a manual
 choice is remembered in `localStorage`.
@@ -74,7 +77,7 @@ src/
   components/   Reusable presentational components (Component.jsx + Component.module.scss)
   data/         CSV loading/caching, useCsv hooks, lookup selectors
   analytics/    Dashboard metric calculations
-  hooks/        useDebounce, useSort, usePagination
+  hooks/        useDebounce, usePersistentState, useSort, usePagination
   utils/        Date formatting, language names, filters, sorters
   theme/        Light/dark theme state (ThemeProvider, useTheme)
   styles/       Theme palettes, SCSS variables, mixins, global styles, chart colors

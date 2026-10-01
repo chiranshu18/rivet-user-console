@@ -335,8 +335,9 @@ src/
     metrics.js                All dashboard metric logic (see Section 6)
   hooks/
     useDebounce.js            Debounced value
-    useSort.js                3-state sort (asc → desc → none)
-    usePagination.js          Page, page size, slicing, reset
+    usePersistentState.js     useState saved to localStorage (validated on read)
+    useSort.js                3-state sort (asc → desc → none), optionally persisted
+    usePagination.js          Page, page size, slicing, reset, optionally persisted
   utils/
     formatDate.js             'YYYY-MM-DD HH:mm:ss' → '16 Jun 2025, 07:59'; chart labels '07 Sep' / '07 Sep 2025'
     languages.js              Code → full language name
@@ -396,8 +397,9 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `useCsv(name)`       | → `{ data: rows, loading, error }`. Names: `users`, `profiles`, `sessions`, `analytics` | Users, Sessions  |
 | `useCsvs(names[])`   | → `{ data: { [name]: rows }, loading, error }` (loads several files together)    | User Details, Analytics  |
 | `useDebounce(v, ms)` | → debounced value                                                               | Users                    |
-| `useSort()`          | → `{ sort: { key, direction }, toggleSort(key) }` (3-state cycle)               | Users, Sessions          |
-| `usePagination(rows, { defaultPageSize, resetKey })` | → `{ page, pageSize, pageCount, total, pageRows, setPage, setPageSize }`; resets to page 1 when `resetKey` or page size changes | Users, Sessions |
+| `usePersistentState(key, default, isValid?)` | → `[value, setValue]`; like `useState`, saved to `localStorage` as JSON. Invalid/unreadable stored value → default. No key → plain `useState` | Users, Sessions (via the hooks below) |
+| `useSort({ storageKey?, sortableKeys })` | → `{ sort: { key, direction }, toggleSort(key) }` (3-state cycle); stored sort is accepted only for a key in `sortableKeys` | Users, Sessions |
+| `usePagination(rows, { defaultPageSize, pageSizeOptions, resetKey, pageStorageKey?, pageSizeStorageKey? })` | → `{ page, pageSize, pageCount, total, pageRows, setPage, setPageSize }`; resets to page 1 when `resetKey` or page size changes; stored page is clamped to the last page | Users, Sessions |
 | `sortRows(rows, sort, comparators)` (`utils/sorters.js`) | Sorted copy; stable, so ties keep CSV order. Comparators: `compareNumbers`, `compareDateTimes`, `compareSemver` | Users, Sessions, Analytics |
 | `filterByPartialSearch` / `filterBySelection` (`utils/filters.js`) | Case-insensitive "contains" search across fields; multi-select filter (empty = all) | Users, Sessions |
 | `ExportCsvButton`    | `rows`, `fields[]`, `filename` ("Export CSV (N)"; disabled when N = 0)           | Users, Sessions          |
@@ -420,7 +422,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 5     | User Sessions                          | Done        |
 | 6     | Analytics Dashboard                    | Done        |
 | 7     | Responsive polish & final QA           | Done        |
-| 8     | Bonus features                         | In progress (dark mode, keyboard a11y, CSV export done; rest deferred) |
+| 8     | Bonus features                         | In progress (dark mode, keyboard a11y, CSV export, filter persistence done; deploy deferred) |
 
 ---
 
@@ -631,7 +633,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | Feature                                                          | Status      |
 | ---------------------------------------------------------------- | ----------- |
 | Light/dark theme toggle                                          | Done (8.1)  |
-| Persist filters (query params and/or localStorage)               | Not started |
+| Persist filters (query params and/or localStorage)               | Done (8.4)  |
 | Export filtered data to CSV                                      | Done (8.3)  |
 | Keyboard accessibility (Tab focus, **Esc to close modal**)       | Done (8.2)  |
 | Deploy to Vercel/Netlify (includes SPA refresh/rewrite handling) | Not started |
@@ -736,6 +738,44 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 - [ ] The file opens correctly in a spreadsheet app (one column per field).
 - [ ] Button is reachable with Tab and works with Enter/Space; looks right in both themes.
 
+#### 8.4 — Remember filters across visits
+
+**Behavior**
+- Table settings are saved in `localStorage` and restored when the page is opened again (after
+  navigating away, a reload, or closing the browser).
+  - **Users List:** search text, status filter, sort, page, page size.
+  - **User Sessions:** device filter, sort, page size. Shared across all users (a Mobile filter set
+    on one user's sessions also applies to the next user's). The page number is not saved, since
+    each user has a different number of sessions.
+- Changing the search or a filter still resets to page 1 (and that page 1 is what gets saved).
+- A saved page beyond the last page shows the last page instead.
+- Stored values are validated on read (unknown status/device, unknown sort column, page size not
+  in 10/25/50, non-positive page, broken JSON); anything invalid falls back to the default, so a
+  bad value can never break the page.
+- Keys (all prefixed `user-console:`): `users:search`, `users:statuses`, `users:sort`,
+  `users:page`, `users:pageSize`, `sessions:devices`, `sessions:sort`, `sessions:pageSize`.
+- Possible extension: mirror the same state into URL query params so a filtered view can be
+  shared as a link.
+
+**Implementation**
+1. `hooks/usePersistentState.js`: `useState` that reads its initial value from `localStorage`
+   (JSON + validator) and writes on every change. Storage errors (private mode, quota) are ignored.
+2. `useSort` and `usePagination` take optional storage keys and use `usePersistentState`.
+3. `UsersPage` / `UserSessionsPage`: `STORAGE_KEYS` + validators; search and filters use
+   `usePersistentState` directly.
+
+**Manual test checklist**
+- [ ] `/users`: Status Returning + Deleted, Join Time ascending, page size 25, go to page 2
+      ("Showing 26–50 of 70"). Open a user and come back → everything is the same. Reload → same.
+- [ ] Type `User5` → page goes back to 1; reload → search box still has `User5`, "Showing 1–9 of 9".
+- [ ] Clear the search and filters, reload → the full list (100 users) comes back.
+- [ ] `/user/u0005/sessions`: Device Mobile, Duration descending, reload → kept. Open
+      `/user/u0002/sessions` → Mobile + sort are applied there too.
+- [ ] DevTools → Application → Local Storage: set `user-console:users:pageSize` to `7` and
+      `user-console:users:statuses` to `["Banned"]`, reload → page size 10, no status selected,
+      no errors.
+- [ ] Clear all `user-console:` keys and reload → defaults (no search/filters, CSV order, page 1, 10 rows).
+
 ---
 
 ## 10. Decision Log
@@ -765,7 +805,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | 21 | Data quirks                   | Displayed as-is                                                          |
 | 22 | Analytics metric sources      | Implementer's choice, "consistent with Users table" — see Section 6      |
 | 23 | Static-host refresh           | Deferred to deploy bonus                                                 |
-| 24 | Bonus features                | Deferred; picked up one at a time when asked (dark mode done)            |
+| 24 | Bonus features                | Deferred; picked up one at a time when asked (all done except deploy)            |
 | 25 | `sass` version                | Pinned to `~1.77.8`: CRA's sass-loader uses the legacy Sass JS API, which newer `sass` versions flag with deprecation warnings on every compile |
 | 26 | Header active state           | "Users" is highlighted on `/users`, `/user/:id`, and `/user/:id/sessions`  |
 | 27 | CSV validation                | Each file's header columns are checked after parsing. The dev server returns `index.html` (HTTP 200) for missing files, so a status check alone would not catch them |
@@ -778,6 +818,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | 34 | Theme (bonus 8.1)             | Light + dark. Default follows the OS; a manual choice is saved in `localStorage` and wins. Toggle is an icon button in the header. Colors are CSS custom properties switched by `data-theme` on `<html>` |
 | 35 | Keyboard a11y (bonus 8.2)     | Esc closes the modal and Tab is trapped inside it; skip-to-content link; charts keep recharts' keyboard layer (one Tab stop each, named, with focus ring) |
 | 36 | CSV export (bonus 8.3)        | Both tables; exports all filtered + sorted rows (all pages) with raw CSV headers/values; file names `users-<date>.csv` / `sessions-<user_id>-<date>.csv` |
+| 37 | Filter persistence (bonus 8.4) | `localStorage` (not URL query params). Users: search, statuses, sort, page, page size. Sessions: devices, sort, page size; shared across all users, page not saved. Stored values are validated on read; anything invalid falls back to the default |
 
 ### Implementer assumptions (minor, change freely)
 
