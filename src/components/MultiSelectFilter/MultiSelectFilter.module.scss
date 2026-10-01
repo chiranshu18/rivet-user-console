@@ -1,0 +1,79 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.filter {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: $space-1;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-muted;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  height: 36px;
+  padding: 0 $space-3;
+  border: 1px solid $color-border;
+  border-radius: 999px;
+  background: $color-surface;
+  font-size: $font-size-sm;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    border-color: $color-border-strong;
+  }
+
+  &:has(:focus-visible) {
+    @include focus-ring;
+  }
+}
+
+.checked {
+  border-color: $color-primary;
+  background: $color-primary-soft;
+  color: $color-primary;
+
+  &:hover {
+    border-color: $color-primary;
+  }
+}
+
+.checkbox {
+  margin: 0;
+  accent-color: $color-primary;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.clear {
+  height: 36px;
+  padding: 0 $space-2;
+  border: none;
+  background: none;
+  color: $color-primary;
+  font-size: $font-size-sm;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

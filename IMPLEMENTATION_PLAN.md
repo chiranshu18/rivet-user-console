@@ -384,8 +384,10 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `useCsv(name)`       | → `{ data: rows, loading, error }`. Names: `users`, `profiles`, `sessions`, `analytics` | Users, Sessions  |
 | `useCsvs(names[])`   | → `{ data: { [name]: rows }, loading, error }` (loads several files together)    | User Details, Analytics  |
 | `useDebounce(v, ms)` | → debounced value                                                               | Users                    |
-| `useSort()`          | → `{ sort: { key, direction }, toggleSort(key), sortRows(rows, comparators) }`  | Users, Sessions          |
-| `usePagination(rows, { defaultPageSize, resetDeps })` | → `{ page, pageSize, pageCount, pageRows, setPage, setPageSize }` | Users, Sessions |
+| `useSort()`          | → `{ sort: { key, direction }, toggleSort(key) }` (3-state cycle)               | Users, Sessions          |
+| `usePagination(rows, { defaultPageSize, resetKey })` | → `{ page, pageSize, pageCount, total, pageRows, setPage, setPageSize }`; resets to page 1 when `resetKey` or page size changes | Users, Sessions |
+| `sortRows(rows, sort, comparators)` (`utils/sorters.js`) | Sorted copy; stable, so ties keep CSV order. Comparators: `compareNumbers`, `compareDateTimes` | Users, Sessions |
+| `filterByExactSearch` / `filterBySelection` (`utils/filters.js`) | Exact case-insensitive search across fields; multi-select filter (empty = all) | Users, Sessions |
 
 ---
 
@@ -400,7 +402,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | ----- | -------------------------------------- | ----------- |
 | 1     | Project setup, app shell & routing     | Done        |
 | 2     | Data layer                             | Done        |
-| 3     | Users List                             | Not started |
+| 3     | Users List                             | Done        |
 | 4     | User Details                           | Not started |
 | 5     | User Sessions                          | Not started |
 | 6     | Analytics Dashboard                    | Not started |

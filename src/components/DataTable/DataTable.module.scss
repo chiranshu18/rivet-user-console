@@ -1,0 +1,67 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-sm;
+
+  th,
+  td {
+    padding: $space-3 $space-4;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid $color-border;
+  }
+
+  th {
+    background: $color-bg;
+    color: $color-text-muted;
+    font-weight: $font-weight-medium;
+  }
+
+  tbody tr:hover {
+    background: $color-bg;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: $color-text;
+  }
+}
+
+.sortIcon {
+  font-size: 0.75rem;
+  color: $color-border-strong;
+}
+
+.sortIconActive {
+  font-size: 0.75rem;
+  color: $color-primary;
+}
+
+.empty {
+  padding: $space-6 $space-4;
+  text-align: center;
+  color: $color-text-muted;
+}
