@@ -151,7 +151,7 @@ CSV files are copied from `resources/` to `public/data/` and fetched at runtime
 | Behavior        | Spec                                                                                          |
 | --------------- | --------------------------------------------------------------------------------------------- |
 | Default order   | CSV order until the user sorts                                                                |
-| Sort            | Click a sortable header to cycle **ascending → descending → none (CSV order)**; show indicator |
+| Sort            | Click a sortable header to cycle **ascending → descending → none (CSV order)**; indicator: grey stacked up/down chevrons when unsorted, a single blue chevron for the active direction |
 | Pagination      | Client-side. Page-size selector: **10 / 25 / 50**, default **10**                             |
 | Pagination UI   | Prev / Next, "Page X of Y", "Showing A–B of N"; Prev/Next disabled at the edges               |
 | Page reset      | Any change to search, filter, sort, or page size resets to **page 1**                          |
@@ -165,7 +165,7 @@ CSV files are copied from `resources/` to `public/data/` and fetched at runtime
 
 | Feature        | Spec                                                                                                     |
 | -------------- | -------------------------------------------------------------------------------------------------------- |
-| Search         | Single input matching **Name OR User ID**, **exact match**, **case-insensitive**, trimmed. Updates as you type with **500 ms debounce**. Empty input = all rows. ⚠️ May change to partial match — see [Pending changes](#pending-changes) |
+| Search         | Single input matching **Name OR User ID**, **partial match (contains)**, **case-insensitive**, trimmed. Updates as you type with **500 ms debounce**. Empty input = all rows |
 | Status filter  | **Multi-select**: New, Returning, Deleted                                                                |
 | Sort           | **Join Time** only (3-state cycle)                                                                        |
 | User ID        | Rendered as a link → `/user/:id`                                                                          |
@@ -338,7 +338,7 @@ src/
   utils/
     formatDate.js             'YYYY-MM-DD HH:mm:ss' → '16 Jun 2025, 07:59'; chart labels '07 Sep' / '07 Sep 2025'
     languages.js              Code → full language name
-    filters.js                Exact search match, multi-select filter
+    filters.js                Partial search match, multi-select filter
     sorters.js                Date, number, semver comparators
   styles/
     _variables.scss           Colors, spacing, breakpoints, typography
@@ -395,7 +395,7 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `useSort()`          | → `{ sort: { key, direction }, toggleSort(key) }` (3-state cycle)               | Users, Sessions          |
 | `usePagination(rows, { defaultPageSize, resetKey })` | → `{ page, pageSize, pageCount, total, pageRows, setPage, setPageSize }`; resets to page 1 when `resetKey` or page size changes | Users, Sessions |
 | `sortRows(rows, sort, comparators)` (`utils/sorters.js`) | Sorted copy; stable, so ties keep CSV order. Comparators: `compareNumbers`, `compareDateTimes`, `compareSemver` | Users, Sessions, Analytics |
-| `filterByExactSearch` / `filterBySelection` (`utils/filters.js`) | Exact case-insensitive search across fields; multi-select filter (empty = all) | Users, Sessions |
+| `filterByPartialSearch` / `filterBySelection` (`utils/filters.js`) | Case-insensitive "contains" search across fields; multi-select filter (empty = all) | Users, Sessions |
 
 ---
 
@@ -478,7 +478,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 1. `DataTable` (column config, sortable headers with indicator, empty message, horizontal scroll on small screens).
 2. `useSort` (3-state cycle) and `sorters.js` (date comparator).
 3. `usePagination` + `Pagination` component (10/25/50, default 10, reset to page 1 on changes).
-4. `useDebounce` (500 ms) + `SearchInput`; `filters.js` exact, case-insensitive, trimmed match on name or ID.
+4. `useDebounce` (500 ms) + `SearchInput`; `filters.js` partial (contains), case-insensitive, trimmed match on name or ID.
 5. `MultiSelectFilter` (Status: New, Returning, Deleted; empty = all).
 6. `StatusBadge`.
 7. `UsersPage` wiring: search → status filter → sort → paginate. Columns per [5.3](#53-users-list--users).
@@ -487,12 +487,14 @@ previous phase's checklist passes. Expected values below are taken from the actu
 - [ ] Page loads 100 users in CSV order (`u0001`, `u0002`, …), 10 per page, "Page 1 of 10".
 - [ ] Page size 25 → "Page 1 of 4"; page size 50 → "Page 1 of 2".
 - [ ] Prev disabled on page 1; Next disabled on last page.
-- [ ] Search `User5` → only **User5 / u0005** (not User50–59). Same for `user5`, `U0005`, ` u0005 `.
-- [ ] Search `User` → no rows, empty-state message shown. Clearing search → all 100 rows.
+- [ ] Search `User5` → **11** rows (User5, User50–User59). Same for `user5`, ` USER5 `, and `ser5`.
+- [ ] Search `u005` → **10** rows (u0050–u0059); `U0005` → only **u0005**.
+- [ ] Search `User` → all **100** rows; `xyz` → no rows, empty-state message shown. Clearing search → all 100 rows.
 - [ ] Results update ~500 ms after typing stops (not on every keystroke).
 - [ ] Status = Deleted → **44** rows; New → **30**; Returning → **26**; New + Returning → **56**; none selected → **100**.
-- [ ] Join Time header: 1st click ascending (first row **u0051**, 11 May 2025), 2nd click descending
-      (first row **u0029**, 04 Nov 2025), 3rd click back to CSV order.
+- [ ] Join Time header shows grey up/down chevrons when unsorted. 1st click ascending (blue up
+      chevron, first row **u0051**, 11 May 2025), 2nd click descending (blue down chevron, first row
+      **u0029**, 04 Nov 2025), 3rd click back to CSV order and grey chevrons.
 - [ ] Go to page 3, then change search/filter/sort/page size → returns to page 1.
 - [ ] Dates are shown as `16 Jun 2025, 07:59` style.
 - [ ] Clicking a User ID → `/user/:id`; clicking "View Sessions" → `/user/:id/sessions`.
@@ -633,7 +635,7 @@ Scope to be decided later. Candidates from the PRD:
 | 9  | Pagination                    | Both tables; 10/25/50 (default 10); independent per table; reset to page 1 on change |
 | 10 | Default table order           | CSV order                                                                |
 | 11 | Sort cycle                    | asc → desc → none                                                        |
-| 12 | Users search                  | Exact match on Name or ID, case-insensitive, live with 500 ms debounce. May switch to partial match later (see [Pending changes](#pending-changes)) |
+| 12 | Users search                  | Partial match (contains) on Name or ID, case-insensitive, live with 500 ms debounce. Originally exact match; changed via P1 (see [Pending changes](#pending-changes)) |
 | 13 | Status filter                 | Multi-select                                                             |
 | 14 | Device filter (Sessions)      | Multi-select                                                             |
 | 15 | Sessions entry points         | Users List row link + User Details button                                |
@@ -686,42 +688,26 @@ Scope to be decided later. Candidates from the PRD:
 
 ### Pending changes
 
-Changes already identified but intentionally not built yet. Pick these up only when asked.
+Changes identified during implementation. Pick these up only when asked. None are open right now.
 
-#### P1 — Users List search: exact match → partial match (case-insensitive)
+#### P1 — Users List search: exact match → partial match ✅ Done
 
-- **Current:** `/users` search keeps a row only if Name or User ID **equals** the query
-  (case-insensitive, trimmed). `User5` matches only User5.
-- **Possible change:** keep a row if Name or User ID **contains** the query (case-insensitive,
-  trimmed). Debounce (500 ms), empty-query behavior, and the filter → sort → paginate pipeline stay
-  the same.
-- **Scope:** Users List search only. The User Details "Search by User ID" stays exact (it navigates
-  to one user) unless decided otherwise.
-- **How to implement:**
-  1. Add `filterByPartialSearch(rows, query, fields)` to `src/utils/filters.js`
-     (same as `filterByExactSearch` but uses `.includes(target)` instead of `=== target`).
-  2. Use it in `src/pages/UsersPage/UsersPage.jsx` instead of `filterByExactSearch`.
-  3. Update the search label/placeholder (drop "exact match").
-  4. Update Section 5.3, Decision Log #12, and the Phase 3 checklist.
-- **Phase 3 checklist values after the change:**
-  - `User5` → **11** rows (User5, User50–User59)
-  - `u005` → **10** rows (u0050–u0059)
-  - `User` → **100** rows
-  - `xyz` → no rows, empty-state message
+- **Was:** `/users` search kept a row only if Name or User ID **equalled** the query.
+- **Now:** a row is kept if Name or User ID **contains** the query anywhere (case-insensitive,
+  trimmed; `ser5` matches User5 and User50–59). Debounce, empty-query behavior, and the
+  filter → sort → paginate pipeline are unchanged.
+- **Scope:** Users List only. The User Details "Search by User ID" stays exact, because it must
+  resolve to a single user.
+- **Code:** `filterByPartialSearch` in `src/utils/filters.js` (replaced `filterByExactSearch`),
+  used by `UsersPage.jsx`; the search label no longer says "exact match".
 
-#### P2 — Table sort icon is too small / unclear when no sort is applied
+#### P2 — Table sort icon too small / unclear when unsorted ✅ Done
 
-- **Current:** sortable headers (Users → Join Time, Sessions → Duration) show a small light-grey `↕`
-  when unsorted, and `▲` / `▼` (blue) when sorted. The unsorted `↕` is very small and low-contrast,
-  so it is hard to recognize the column as sortable.
-- **Possible change:** make the unsorted state clearly visible and recognizable as a sort control
-  (e.g. a larger, darker icon, a stacked up/down arrow icon, or a visible button-style header),
-  keeping `▲` / `▼` for the active direction.
-- **Scope:** `DataTable` only, so both tables get the fix.
-- **Where:** `src/components/DataTable/DataTable.jsx` (`SORT_ICON` and the icon `<span>`) and
-  `DataTable.module.scss` (`.sortIcon`, `.sortIconActive`).
-- **Check after the change:** at 1280px and 375px the unsorted icon is clearly visible next to
-  "Join Time" and "Duration (min)", and the 3-state cycle (asc → desc → none) still works.
+- **Was:** a small, light-grey `↕` text glyph when unsorted; `▲` / `▼` when sorted.
+- **Now:** a `SortIcon` SVG in `DataTable.jsx` with stacked up/down chevrons (10×14px). Unsorted:
+  both chevrons in the header's grey (darkens on hover with the label). Sorted: only the active
+  chevron, in blue; the other is hidden but keeps its space so the header does not shift.
+- **Scope:** `DataTable`, so both Users (Join Time) and Sessions (Duration) tables get it.
 
 ---
 

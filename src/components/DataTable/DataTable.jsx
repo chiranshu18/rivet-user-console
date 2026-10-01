@@ -1,7 +1,27 @@
 import styles from './DataTable.module.scss';
 
 const ARIA_SORT = { asc: 'ascending', desc: 'descending' };
-const SORT_ICON = { asc: '▲', desc: '▼' };
+
+/** Stacked up/down chevrons; when sorted, only the active direction is shown. */
+function SortIcon({ direction }) {
+  return (
+    <svg
+      className={direction ? styles.sortIconActive : styles.sortIcon}
+      width="10"
+      height="14"
+      viewBox="0 0 10 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 5.5 5 2.5 8 5.5" className={direction === 'desc' ? styles.hidden : undefined} />
+      <path d="M2 8.5 5 11.5 8 8.5" className={direction === 'asc' ? styles.hidden : undefined} />
+    </svg>
+  );
+}
 
 /**
  * @param {{ key: string, header: string, render?: (row) => any, sortable?: boolean }[]} columns
@@ -32,12 +52,7 @@ function DataTable({ columns, rows, getRowKey, sort, onSort, emptyMessage = 'No 
                       onClick={() => onSort(column.key)}
                     >
                       {column.header}
-                      <span
-                        className={direction ? styles.sortIconActive : styles.sortIcon}
-                        aria-hidden="true"
-                      >
-                        {SORT_ICON[direction] ?? '↕'}
-                      </span>
+                      <SortIcon direction={direction} />
                     </button>
                   ) : (
                     column.header

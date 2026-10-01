@@ -50,14 +50,17 @@
   }
 }
 
-.sortIcon {
-  font-size: 0.75rem;
-  color: $color-border-strong;
+.sortIcon,
+.sortIconActive {
+  flex-shrink: 0;
 }
 
 .sortIconActive {
-  font-size: 0.75rem;
   color: $color-primary;
+}
+
+.hidden {
+  visibility: hidden;
 }
 
 .empty {

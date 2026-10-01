@@ -1,12 +1,12 @@
 /**
- * Keeps rows where any of `fields` equals `query` exactly (case-insensitive, trimmed).
+ * Keeps rows where any of `fields` contains `query` (case-insensitive, trimmed).
  * An empty query keeps all rows.
  */
-export function filterByExactSearch(rows, query, fields) {
+export function filterByPartialSearch(rows, query, fields) {
   const target = query.trim().toLowerCase();
   if (!target) return rows;
   return rows.filter((row) =>
-    fields.some((field) => String(row[field] ?? '').toLowerCase() === target)
+    fields.some((field) => String(row[field] ?? '').toLowerCase().includes(target))
   );
 }
 

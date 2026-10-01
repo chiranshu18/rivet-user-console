@@ -4,7 +4,7 @@ import useCsv from '../../data/useCsv';
 import useDebounce from '../../hooks/useDebounce';
 import useSort from '../../hooks/useSort';
 import usePagination from '../../hooks/usePagination';
-import { filterByExactSearch, filterBySelection } from '../../utils/filters';
+import { filterByPartialSearch, filterBySelection } from '../../utils/filters';
 import { compareDateTimes, sortRows } from '../../utils/sorters';
 import { formatDateTime } from '../../utils/formatDate';
 import DataTable from '../../components/DataTable/DataTable';
@@ -64,7 +64,7 @@ function UsersPage() {
 
   const visibleUsers = useMemo(() => {
     if (!users) return [];
-    const searched = filterByExactSearch(users, debouncedSearch, SEARCH_FIELDS);
+    const searched = filterByPartialSearch(users, debouncedSearch, SEARCH_FIELDS);
     const filtered = filterBySelection(searched, 'status', statuses);
     return sortRows(filtered, sort, COMPARATORS);
   }, [users, debouncedSearch, statuses, sort]);
@@ -86,7 +86,7 @@ function UsersPage() {
           toolbar={
             <>
               <SearchInput
-                label="Search by name or user ID (exact match)"
+                label="Search by name or user ID"
                 value={search}
                 onChange={setSearch}
                 placeholder="e.g. User5 or u0005"
