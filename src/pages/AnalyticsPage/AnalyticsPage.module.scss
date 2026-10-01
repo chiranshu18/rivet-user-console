@@ -1,0 +1,40 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $space-4;
+  margin-bottom: $space-4;
+
+  @include up(md) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $space-4;
+
+  @include up(lg) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.fullWidth {
+  @include up(lg) {
+    grid-column: 1 / -1;
+  }
+}
+
+.wide {
+  @include up(lg) {
+    grid-column: span 2;
+  }
+}
+
+.horizontalScroll {
+  width: 100%;
+  overflow-x: auto;
+}

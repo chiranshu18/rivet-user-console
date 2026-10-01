@@ -1,0 +1,6 @@
+@use '../../styles/variables' as *;
+
+.backLink {
+  display: inline-block;
+  font-weight: $font-weight-medium;
+}

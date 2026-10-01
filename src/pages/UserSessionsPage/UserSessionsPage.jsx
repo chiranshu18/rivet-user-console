@@ -1,24 +1,126 @@
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import useCsv from '../../data/useCsv';
-import { getSessionsByUserId } from '../../data/selectors';
+import { useCsvs } from '../../data/useCsv';
+import { getSessionsByUserId, getUserById } from '../../data/selectors';
+import useSort from '../../hooks/useSort';
+import usePagination from '../../hooks/usePagination';
+import { filterBySelection } from '../../utils/filters';
+import { compareNumbers, sortRows } from '../../utils/sorters';
+import { formatDateTime } from '../../utils/formatDate';
+import DataTable from '../../components/DataTable/DataTable';
+import Pagination from '../../components/Pagination/Pagination';
+import MultiSelectFilter from '../../components/MultiSelectFilter/MultiSelectFilter';
 import Loader from '../../components/Loader/Loader';
 import ErrorState from '../../components/ErrorState/ErrorState';
+import NotFoundState from '../../components/NotFoundState/NotFoundState';
+import PageHeader from '../../components/PageHeader/PageHeader';
+import Panel from '../../components/Panel/Panel';
+import BackLink from '../../components/BackLink/BackLink';
+import styles from './UserSessionsPage.module.scss';
+
+const DEVICE_OPTIONS = ['Desktop', 'Mobile'];
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const COMPARATORS = { session_duration_minutes: compareNumbers };
+
+const COLUMNS = [
+  {
+    key: 'session_start',
+    header: 'Session Start',
+    render: (session) => formatDateTime(session.session_start),
+  },
+  { key: 'session_duration_minutes', header: 'Duration (min)', sortable: true },
+  { key: 'device', header: 'Device' },
+  { key: 'entry_screen', header: 'Entry Screen' },
+  { key: 'exit_screen', header: 'Exit Screen' },
+];
+
+const getRowKey = (session) => session.rowKey;
 
 function UserSessionsPage() {
   const { id } = useParams();
-  const { data: sessions, loading, error } = useCsv('sessions');
+  const { data, loading, error } = useCsvs(['users', 'sessions']);
+  const [devices, setDevices] = useState([]);
+  const { sort, toggleSort } = useSort();
+
+  const user = data ? getUserById(data.users, id) : null;
+
+  // Sessions have no unique ID column, so the row's position in the CSV is used as its key.
+  const userSessions = useMemo(() => {
+    if (!data) return [];
+    return getSessionsByUserId(data.sessions, id).map((session, index) => ({
+      ...session,
+      rowKey: `${session.user_id}-${index}`,
+    }));
+  }, [data, id]);
+
+  const visibleSessions = useMemo(() => {
+    const filtered = filterBySelection(userSessions, 'device', devices);
+    return sortRows(filtered, sort, COMPARATORS);
+  }, [userSessions, devices, sort]);
+
+  const pagination = usePagination(visibleSessions, {
+    defaultPageSize: PAGE_SIZE_OPTIONS[0],
+    resetKey: JSON.stringify([id, devices, sort]),
+  });
+
+  const emptyMessage =
+    userSessions.length === 0
+      ? 'No sessions recorded for this user.'
+      : 'No sessions match the selected device.';
 
   return (
     <section>
-      <h1>User Sessions</h1>
-      <p>User ID: {id}</p>
       {loading && <Loader message="Loading sessions…" />}
       {error && <ErrorState message={error.message} />}
-      {sessions && (
+
+      {data && !user && (
+        <NotFoundState
+          title="User not found"
+          message={`No user exists with ID "${id}".`}
+          linkLabel="Back to Users"
+        />
+      )}
+
+      {user && (
         <>
-          {/* TEMP (Phase 2 check) — replaced by the sessions table in Phase 5 */}
-          <p>Loaded sessions: {sessions.length}</p>
-          <p>Sessions for this user: {getSessionsByUserId(sessions, id).length}</p>
+          <div className={styles.topBar}>
+            <BackLink to={`/user/${user.user_id}`}>Back to {user.name}</BackLink>
+          </div>
+
+          <PageHeader
+            title={`Sessions — ${user.name}`}
+            subtitle={`${user.user_id} · ${userSessions.length} sessions in total`}
+          />
+
+          <Panel
+            toolbar={
+              <MultiSelectFilter
+                label="Device"
+                options={DEVICE_OPTIONS}
+                selected={devices}
+                onChange={setDevices}
+              />
+            }
+          >
+            <DataTable
+              columns={COLUMNS}
+              rows={pagination.pageRows}
+              getRowKey={getRowKey}
+              sort={sort}
+              onSort={toggleSort}
+              emptyMessage={emptyMessage}
+            />
+
+            <Pagination
+              page={pagination.page}
+              pageCount={pagination.pageCount}
+              pageSize={pagination.pageSize}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              total={pagination.total}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+          </Panel>
         </>
       )}
     </section>

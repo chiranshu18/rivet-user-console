@@ -26,6 +26,13 @@ export function formatDateTime(value) {
   )}:${pad(date.getMinutes())}`;
 }
 
+/** '2025-09-07' → '07 Sep' */
+export function formatShortDate(value) {
+  const date = parseDateTime(value);
+  if (!date) return '—';
+  return `${pad(date.getDate())} ${MONTHS[date.getMonth()]}`;
+}
+
 /** '2025-09-07' → '07 Sep 2025' */
 export function formatDate(value) {
   const date = parseDateTime(value);

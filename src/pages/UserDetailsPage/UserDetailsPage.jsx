@@ -10,6 +10,7 @@ import NotFoundState from '../../components/NotFoundState/NotFoundState';
 import SearchForm from '../../components/SearchForm/SearchForm';
 import StatusBadge from '../../components/StatusBadge/StatusBadge';
 import Modal from '../../components/Modal/Modal';
+import BackLink from '../../components/BackLink/BackLink';
 import styles from './UserDetailsPage.module.scss';
 
 const DETAIL_FIELDS = [
@@ -55,9 +56,7 @@ function UserDetailsPage() {
   return (
     <section>
       <div className={styles.topBar}>
-        <Link to="/users" className={styles.backLink}>
-          ← Back to Users
-        </Link>
+        <BackLink to="/users">Back to Users</BackLink>
         <SearchForm
           label="Search by User ID"
           placeholder="e.g. u0010"

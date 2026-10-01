@@ -321,9 +321,10 @@ src/
   components/                 Reusable, presentational (each has Component.jsx + Component.module.scss)
     Layout/  Header/  DataTable/  Pagination/  SearchInput/  MultiSelectFilter/
     Modal/  StatusBadge/  MetricCard/  Loader/  ErrorState/  EmptyState/  ChartCard/
-    SearchForm/  NotFoundState/
+    SearchForm/  NotFoundState/  PageHeader/  Panel/  BackLink/
   pages/                      Route-level containers (data wiring + composition)
     UsersPage/  UserDetailsPage/  UserSessionsPage/  AnalyticsPage/  NotFoundPage/
+    AnalyticsPage/            Also holds the three chart components (DAU, New vs Returning, App Version)
   data/
     csvClient.js              fetch + PapaParse + in-memory cache (one fetch per file)
     useCsv.js                 Hook → { data, loading, error }
@@ -335,7 +336,7 @@ src/
     useSort.js                3-state sort (asc → desc → none)
     usePagination.js          Page, page size, slicing, reset
   utils/
-    formatDate.js             'YYYY-MM-DD HH:mm:ss' → '16 Jun 2025, 07:59'
+    formatDate.js             'YYYY-MM-DD HH:mm:ss' → '16 Jun 2025, 07:59'; chart labels '07 Sep' / '07 Sep 2025'
     languages.js              Code → full language name
     filters.js                Exact search match, multi-select filter
     sorters.js                Date, number, semver comparators
@@ -343,6 +344,7 @@ src/
     _variables.scss           Colors, spacing, breakpoints, typography
     _mixins.scss              Breakpoint mixins, focus ring, etc.
     global.scss               Reset + base styles
+    chartTheme.js             Chart colors as JS strings (recharts cannot read SCSS variables)
 ```
 
 ### Data flow
@@ -364,8 +366,8 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 
 - PapaParse with `header: true`, `skipEmptyLines: true`.
 - Numeric columns converted to numbers (`session_duration_minutes`, all `analytics.csv` counts).
-- Datetimes kept as original strings; converted with `'YYYY-MM-DD HH:mm:ss'.replace(' ', 'T')`
-  before `new Date(...)` (Safari-safe, treated as local time).
+- Datetimes kept as original strings; parsed with a regex into a local-time `Date` only when
+  formatting or sorting (see Decision Log #28).
 
 ---
 
@@ -380,16 +382,19 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `Modal`              | `isOpen`, `onClose`, `title`, `children` (closes on button + backdrop; locks page scroll; focuses Close on open and restores focus on close) | User Details |
 | `SearchForm`         | `label`, `placeholder`, `value`, `onChange`, `onSubmit`, `error` (submit on Enter/button, inline error) | User Details |
 | `NotFoundState`      | `code?`, `title`, `message?`, `linkTo?`, `linkLabel?`                           | 404 page, User Details, User Sessions |
+| `PageHeader`         | `title`, `subtitle?`                                                            | Users, User Sessions     |
+| `Panel`              | `toolbar?`, `children` (card with an optional search/filter row on top)         | Users, User Sessions     |
+| `BackLink`           | `to`, `children` (renders "← label")                                            | User Details, User Sessions |
 | `StatusBadge`        | `status`                                                                        | Users, User Details      |
-| `MetricCard`         | `label`, `value`                                                                | Analytics                |
-| `ChartCard`          | `title`, `children`                                                             | Analytics                |
+| `MetricCard`         | `label`, `value`, `description?` (small text naming the metric's data source)   | Analytics                |
+| `ChartCard`          | `title`, `description?`, `className?`, `children`                               | Analytics                |
 | `Loader` / `ErrorState` / `EmptyState` | `message?`                                                    | All pages                |
 | `useCsv(name)`       | → `{ data: rows, loading, error }`. Names: `users`, `profiles`, `sessions`, `analytics` | Users, Sessions  |
 | `useCsvs(names[])`   | → `{ data: { [name]: rows }, loading, error }` (loads several files together)    | User Details, Analytics  |
 | `useDebounce(v, ms)` | → debounced value                                                               | Users                    |
 | `useSort()`          | → `{ sort: { key, direction }, toggleSort(key) }` (3-state cycle)               | Users, Sessions          |
 | `usePagination(rows, { defaultPageSize, resetKey })` | → `{ page, pageSize, pageCount, total, pageRows, setPage, setPageSize }`; resets to page 1 when `resetKey` or page size changes | Users, Sessions |
-| `sortRows(rows, sort, comparators)` (`utils/sorters.js`) | Sorted copy; stable, so ties keep CSV order. Comparators: `compareNumbers`, `compareDateTimes` | Users, Sessions |
+| `sortRows(rows, sort, comparators)` (`utils/sorters.js`) | Sorted copy; stable, so ties keep CSV order. Comparators: `compareNumbers`, `compareDateTimes`, `compareSemver` | Users, Sessions, Analytics |
 | `filterByExactSearch` / `filterBySelection` (`utils/filters.js`) | Exact case-insensitive search across fields; multi-select filter (empty = all) | Users, Sessions |
 
 ---
@@ -407,8 +412,8 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 2     | Data layer                             | Done        |
 | 3     | Users List                             | Done        |
 | 4     | User Details                           | Done        |
-| 5     | User Sessions                          | Not started |
-| 6     | Analytics Dashboard                    | Not started |
+| 5     | User Sessions                          | Done        |
+| 6     | Analytics Dashboard                    | Done        |
 | 7     | Responsive polish & final QA           | Not started |
 | 8     | Bonus features (deferred)              | Deferred    |
 
@@ -535,14 +540,20 @@ previous phase's checklist passes. Expected values below are taken from the actu
 4. Not-found and empty states.
 
 **Manual test checklist**
-- [ ] `/user/u0001/sessions` header shows **User1 (u0001)**; table shows **3** sessions in CSV order.
-- [ ] Device = Desktop → **2** rows; Mobile → **1** row; none → **3**.
-- [ ] Duration header on u0001: asc → **6, 68, 113**; desc → **113, 68, 6**; 3rd click → CSV order.
-- [ ] `/user/u0005/sessions`: **9** sessions (Desktop 6, Mobile 3).
+- [ ] `/user/u0001/sessions` shows "← Back to User1", heading **Sessions — User1**, subtitle
+      **u0001 · 3 sessions in total**; table shows **3** sessions in CSV order (durations 6, 68, 113).
+- [ ] Device = Desktop → **2** rows; Mobile → **1** row; both or none → **3**.
+- [ ] `/user/u0005/sessions`: **9** sessions (Desktop 6, Mobile 3), CSV order durations
+      **19, 103, 114, 39, 71, 115, 9, 54, 81**.
+- [ ] Duration header on u0005: asc → **9, 19, 39, 54, 71, 81, 103, 114, 115**; desc → reverse;
+      3rd click → back to CSV order above.
+- [ ] Device filter + duration sort work together (u0001: Mobile + asc → **113**).
 - [ ] Pagination shows "Page 1 of 1" for page size 10 (max 10 sessions/user in current data);
       page-size selector still works.
-- [ ] Back link → `/user/u0001`. `/user/u9999/sessions` → "User not found".
-- [ ] At 375px the table scrolls horizontally.
+- [ ] Reachable from both the Users List ("View Sessions") and User Details ("View Sessions" button).
+- [ ] "← Back to User1" → `/user/u0001`. `/user/U0002/sessions` (uppercase) works.
+- [ ] `/user/u9999/sessions` → "User not found" with a "Back to Users" link (no back-to-details link).
+- [ ] At 375px the table scrolls horizontally inside its card; the page itself does not.
 
 ---
 
@@ -553,20 +564,26 @@ previous phase's checklist passes. Expected values below are taken from the actu
 **Tasks**
 1. `src/analytics/metrics.js` with the six functions from [Section 6](#6-analytics-metric-definitions-changeable)
    (each with a short comment naming the chosen option, e.g. "Option 2a").
-2. `sorters.js`: semver comparator.
-3. `MetricCard`, `ChartCard` components.
+2. `sorters.js`: semver comparator (`compareSemver`).
+3. `MetricCard`, `ChartCard` components; `styles/chartTheme.js` for chart colors.
 4. `AnalyticsPage`: load `users`, `user_sessions`, `user_profiles`, `analytics`; render 3 cards + 3 charts.
 5. Line chart (DAU), pie chart (New vs Returning with %), bar chart (App versions, horizontally scrollable).
+   Chart components live in `pages/AnalyticsPage/`.
+
+**Layout:** metric cards in 1 column, 3 columns from 768px. Charts: DAU full width; from 1024px the
+pie takes 1/3 and the bar chart 2/3 of the next row; below 1024px everything stacks.
 
 **Manual test checklist** (expected values for the current definitions in Section 6)
-- [ ] Total Users = **100**.
-- [ ] Average Session Duration = **64.2 min**.
-- [ ] Deleted User % = **44.0%**.
-- [ ] DAU line chart: x-axis runs **2025-09-07 → 2025-11-05** (oldest on the left); peak **798**
-      on 2025-09-14; lowest **213** on 2025-10-23 (check via tooltip).
-- [ ] Pie: **New 30 (53.6%)**, **Returning 26 (46.4%)**.
-- [ ] Bar chart: **86** bars, first `v1.0.0`, last `v3.8.9`; counts sum to **100**; `v1.2.0` = 2.
-- [ ] Charts resize with the window; bar chart scrolls horizontally on narrow screens.
+- [ ] Total Users = **100**, Average Session Duration = **64.2 min**, Deleted User % = **44.0%**;
+      each card shows a one-line description of its data source.
+- [ ] DAU line chart: subtitle reads **07 Sep 2025 – 05 Nov 2025** (oldest on the left); tooltip
+      shows the peak **798** on 14 Sep 2025 and the lowest **213** on 23 Oct 2025.
+- [ ] Pie: slice labels **53.6%** (New, green) and **46.4%** (Returning, blue); tooltip shows
+      **30 users** / **26 users**; legend shows New and Returning.
+- [ ] Bar chart: subtitle says **86 versions**; bars run `v1.0.0` → `v3.8.9`; y-axis 0–2;
+      hovering `v1.2.0` shows **2** users.
+- [ ] Charts resize with the window; at 375px the cards stack, and the bar chart scrolls
+      horizontally inside its card (the page itself does not).
 - [ ] Changing one metric function in `metrics.js` changes only that card/chart (sanity check of isolation).
 
 ---
@@ -633,6 +650,8 @@ Scope to be decided later. Candidates from the PRD:
 | 26 | Header active state           | "Users" is highlighted on `/users`, `/user/:id`, and `/user/:id/sessions`  |
 | 27 | CSV validation                | Each file's header columns are checked after parsing. The dev server returns `index.html` (HTTP 200) for missing files, so a status check alone would not catch them |
 | 28 | Date parsing                  | Parsed manually with a regex into local time (no `new Date(string)`), and formatted with fixed English month names so output is identical across browsers |
+| 29 | `react-is` dependency         | `react-is@^19` installed explicitly; otherwise recharts resolves an older copy that does not recognise React 19 elements |
+| 30 | Chart colors                  | `styles/chartTheme.js` mirrors the SCSS color variables, because recharts takes colors as JS props. Keep both in sync |
 
 ### Implementer assumptions (minor, change freely)
 
@@ -643,8 +662,18 @@ Scope to be decided later. Candidates from the PRD:
 - Pagination UI: Prev/Next + "Page X of Y" + "Showing A–B of N".
 - User Details search: empty submit shows "Enter a user ID, e.g. u0010."; a successful search clears
   the input; the search stays visible on the "User not found" state.
+- Sessions rows have no unique ID in the CSV; the row's position within the user's sessions is used
+  as the React key.
+- Sessions empty-state text: "No sessions recorded for this user." (no data) vs "No sessions match
+  the selected device." (filtered out).
 - Modal locks page scroll while open and returns focus to the thumbnail on close (Esc is still in
   the bonus task).
+- Analytics: each card/chart shows a short description of its data source (from
+  `METRIC_DESCRIPTIONS` in `metrics.js`, so it updates when a metric definition changes).
+- Analytics: DAU x-axis labels are `07 Sep`, tooltips `07 Sep 2025`; the bar chart's y-axis stops
+  at the highest count; recharts' default entry animations are kept.
+- recharts adds ~118 kB gzipped to the bundle; lazy-loading the Analytics page is a possible
+  Phase 7 optimization.
 
 ---
 
@@ -679,6 +708,20 @@ Changes already identified but intentionally not built yet. Pick these up only w
   - `u005` → **10** rows (u0050–u0059)
   - `User` → **100** rows
   - `xyz` → no rows, empty-state message
+
+#### P2 — Table sort icon is too small / unclear when no sort is applied
+
+- **Current:** sortable headers (Users → Join Time, Sessions → Duration) show a small light-grey `↕`
+  when unsorted, and `▲` / `▼` (blue) when sorted. The unsorted `↕` is very small and low-contrast,
+  so it is hard to recognize the column as sortable.
+- **Possible change:** make the unsorted state clearly visible and recognizable as a sort control
+  (e.g. a larger, darker icon, a stacked up/down arrow icon, or a visible button-style header),
+  keeping `▲` / `▼` for the active direction.
+- **Scope:** `DataTable` only, so both tables get the fix.
+- **Where:** `src/components/DataTable/DataTable.jsx` (`SORT_ICON` and the icon `<span>`) and
+  `DataTable.module.scss` (`.sortIcon`, `.sortIconActive`).
+- **Check after the change:** at 1280px and 375px the unsorted icon is clearly visible next to
+  "Join Time" and "Duration (min)", and the 3-state cycle (asc → desc → none) still works.
 
 ---
 

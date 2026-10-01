@@ -14,7 +14,8 @@ import MultiSelectFilter from '../../components/MultiSelectFilter/MultiSelectFil
 import StatusBadge from '../../components/StatusBadge/StatusBadge';
 import Loader from '../../components/Loader/Loader';
 import ErrorState from '../../components/ErrorState/ErrorState';
-import styles from './UsersPage.module.scss';
+import PageHeader from '../../components/PageHeader/PageHeader';
+import Panel from '../../components/Panel/Panel';
 
 const SEARCH_DEBOUNCE_MS = 500;
 const SEARCH_FIELDS = ['name', 'user_id'];
@@ -75,31 +76,30 @@ function UsersPage() {
 
   return (
     <section>
-      <header className={styles.header}>
-        <h1>Users</h1>
-        {users && <p className={styles.subtitle}>{users.length} users in total</p>}
-      </header>
+      <PageHeader title="Users" subtitle={users && `${users.length} users in total`} />
 
       {loading && <Loader message="Loading users…" />}
       {error && <ErrorState message={error.message} />}
 
       {users && (
-        <div className={styles.panel}>
-          <div className={styles.toolbar}>
-            <SearchInput
-              label="Search by name or user ID (exact match)"
-              value={search}
-              onChange={setSearch}
-              placeholder="e.g. User5 or u0005"
-            />
-            <MultiSelectFilter
-              label="Status"
-              options={STATUS_OPTIONS}
-              selected={statuses}
-              onChange={setStatuses}
-            />
-          </div>
-
+        <Panel
+          toolbar={
+            <>
+              <SearchInput
+                label="Search by name or user ID (exact match)"
+                value={search}
+                onChange={setSearch}
+                placeholder="e.g. User5 or u0005"
+              />
+              <MultiSelectFilter
+                label="Status"
+                options={STATUS_OPTIONS}
+                selected={statuses}
+                onChange={setStatuses}
+              />
+            </>
+          }
+        >
           <DataTable
             columns={COLUMNS}
             rows={pagination.pageRows}
@@ -118,7 +118,7 @@ function UsersPage() {
             onPageChange={pagination.setPage}
             onPageSizeChange={pagination.setPageSize}
           />
-        </div>
+        </Panel>
       )}
     </section>
   );

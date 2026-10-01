@@ -1,0 +1,29 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.card {
+  @include card;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: $space-4 $space-5 0;
+}
+
+.title {
+  margin: 0;
+  font-size: $font-size-base;
+}
+
+.description {
+  margin: $space-1 0 0;
+  font-size: $font-size-sm;
+  color: $color-text-muted;
+}
+
+.body {
+  flex: 1;
+  padding: $space-4 $space-5 $space-5;
+}

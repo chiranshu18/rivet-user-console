@@ -1,0 +1,27 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.card {
+  @include card;
+  padding: $space-4 $space-5;
+}
+
+.label {
+  margin: 0 0 $space-1;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-muted;
+}
+
+.value {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+}
+
+.description {
+  margin: $space-2 0 0;
+  font-size: 0.75rem;
+  color: $color-text-muted;
+}
