@@ -1,0 +1,21 @@
+@use '../../styles/variables' as *;
+
+.error {
+  padding: $space-4 $space-5;
+  border: 1px solid $color-status-deleted-bg;
+  border-left: 4px solid $color-danger;
+  border-radius: $radius-md;
+  background: $color-surface;
+}
+
+.title {
+  margin: 0 0 $space-1;
+  font-weight: $font-weight-bold;
+  color: $color-danger;
+}
+
+.message {
+  margin: 0;
+  color: $color-text-muted;
+  font-size: $font-size-sm;
+}

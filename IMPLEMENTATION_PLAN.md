@@ -381,7 +381,8 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `MetricCard`         | `label`, `value`                                                                | Analytics                |
 | `ChartCard`          | `title`, `children`                                                             | Analytics                |
 | `Loader` / `ErrorState` / `EmptyState` | `message?`                                                    | All pages                |
-| `useCsv(name)`       | → `{ data, loading, error }`                                                    | All pages                |
+| `useCsv(name)`       | → `{ data: rows, loading, error }`. Names: `users`, `profiles`, `sessions`, `analytics` | Users, Sessions  |
+| `useCsvs(names[])`   | → `{ data: { [name]: rows }, loading, error }` (loads several files together)    | User Details, Analytics  |
 | `useDebounce(v, ms)` | → debounced value                                                               | Users                    |
 | `useSort()`          | → `{ sort: { key, direction }, toggleSort(key), sortRows(rows, comparators) }`  | Users, Sessions          |
 | `usePagination(rows, { defaultPageSize, resetDeps })` | → `{ page, pageSize, pageCount, pageRows, setPage, setPageSize }` | Users, Sessions |
@@ -398,7 +399,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | Phase | Title                                  | Status      |
 | ----- | -------------------------------------- | ----------- |
 | 1     | Project setup, app shell & routing     | Done        |
-| 2     | Data layer                             | Not started |
+| 2     | Data layer                             | Done        |
 | 3     | Users List                             | Not started |
 | 4     | User Details                           | Not started |
 | 5     | User Sessions                          | Not started |
@@ -436,21 +437,26 @@ previous phase's checklist passes. Expected values below are taken from the actu
 
 **Tasks**
 1. Copy the 4 CSVs from `resources/` to `public/data/`.
-2. `csvClient.load(name)`: fetch → PapaParse (rules in [Section 7](#parsing-rules)) → cache promise
-   per file (fetched at most once per app session).
-3. `useCsv(name)` hook returning `{ data, loading, error }`.
+2. `csvClient.loadCsv(name)`: fetch → PapaParse (rules in [Section 7](#parsing-rules)) → validate
+   expected header columns → cache per file (fetched at most once per app session; failed loads
+   are not cached so they can be retried).
+3. `useCsv(name)` and `useCsvs(names)` hooks returning `{ data, loading, error }`.
 4. `selectors.js`: `getUserById`, `getProfileByUserId`, `getSessionsByUserId` (case-insensitive ID).
 5. `utils/formatDate.js`, `utils/languages.js`.
 6. `Loader`, `ErrorState`, `EmptyState` components.
-7. Temporarily render row counts on placeholder pages to verify loading.
+7. Temporarily render row counts on placeholder pages to verify loading (marked `TEMP` in code;
+   each is replaced when its page is built in Phases 3–6).
 
 **Manual test checklist**
 - [ ] Placeholder pages show counts: users **100**, profiles **100**, sessions **686**, analytics **60**.
 - [ ] DevTools Network tab: each CSV is requested **once**, even after navigating between pages.
 - [ ] Network throttled to "Slow 3G": loader is visible before data appears.
-- [ ] Temporarily rename `public/data/users.csv`: error state is shown (then restore the file).
-- [ ] `formatDate('2025-06-16 07:59:34')` renders as `16 Jun 2025, 07:59` (verify on a placeholder).
-- [ ] Remove the temporary counts once verified.
+- [ ] Temporarily rename `public/data/users.csv`: `/users` shows "Failed to load users.csv (file
+      missing or not a CSV)" (then restore the file).
+- [ ] `/users` shows `2025-06-16 07:59:34 → 16 Jun 2025, 07:59`.
+- [ ] `/user/U0002` (uppercase) shows `User2 · joined 31 Oct 2025, 07:59 · Bengali`.
+- [ ] `/user/u9999` shows "No user found for this ID."
+- [ ] `/user/u0001/sessions` shows "Sessions for this user: 3".
 
 ---
 
@@ -617,6 +623,8 @@ Scope to be decided later. Candidates from the PRD:
 | 24 | Bonus features                | Deferred as a single task                                                |
 | 25 | `sass` version                | Pinned to `~1.77.8`: CRA's sass-loader uses the legacy Sass JS API, which newer `sass` versions flag with deprecation warnings on every compile |
 | 26 | Header active state           | "Users" is highlighted on `/users`, `/user/:id`, and `/user/:id/sessions`  |
+| 27 | CSV validation                | Each file's header columns are checked after parsing. The dev server returns `index.html` (HTTP 200) for missing files, so a status check alone would not catch them |
+| 28 | Date parsing                  | Parsed manually with a regex into local time (no `new Date(string)`), and formatted with fixed English month names so output is identical across browsers |
 
 ### Implementer assumptions (minor, change freely)
 
