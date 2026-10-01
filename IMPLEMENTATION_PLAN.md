@@ -320,7 +320,7 @@ src/
     routes.jsx                Route table
   components/                 Reusable, presentational (each has Component.jsx + Component.module.scss)
     Layout/  Header/  DataTable/  Pagination/  SearchInput/  MultiSelectFilter/
-    Modal/  StatusBadge/  MetricCard/  Loader/  ErrorState/  EmptyState/  ChartCard/
+    Modal/  StatusBadge/  MetricCard/  Loader/  ErrorState/  ChartCard/
     SearchForm/  NotFoundState/  PageHeader/  Panel/  BackLink/
   pages/                      Route-level containers (data wiring + composition)
     UsersPage/  UserDetailsPage/  UserSessionsPage/  AnalyticsPage/  NotFoundPage/
@@ -388,7 +388,7 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `StatusBadge`        | `status`                                                                        | Users, User Details      |
 | `MetricCard`         | `label`, `value`, `description?` (small text naming the metric's data source)   | Analytics                |
 | `ChartCard`          | `title`, `description?`, `className?`, `children`                               | Analytics                |
-| `Loader` / `ErrorState` / `EmptyState` | `message?`                                                    | All pages                |
+| `Loader` / `ErrorState` | `message?` (empty tables use `DataTable`'s `emptyMessage` instead)           | All pages                |
 | `useCsv(name)`       | → `{ data: rows, loading, error }`. Names: `users`, `profiles`, `sessions`, `analytics` | Users, Sessions  |
 | `useCsvs(names[])`   | → `{ data: { [name]: rows }, loading, error }` (loads several files together)    | User Details, Analytics  |
 | `useDebounce(v, ms)` | → debounced value                                                               | Users                    |
@@ -414,7 +414,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 4     | User Details                           | Done        |
 | 5     | User Sessions                          | Done        |
 | 6     | Analytics Dashboard                    | Done        |
-| 7     | Responsive polish & final QA           | Not started |
+| 7     | Responsive polish & final QA           | Done        |
 | 8     | Bonus features (deferred)              | Deferred    |
 
 ---
@@ -453,7 +453,8 @@ previous phase's checklist passes. Expected values below are taken from the actu
 3. `useCsv(name)` and `useCsvs(names)` hooks returning `{ data, loading, error }`.
 4. `selectors.js`: `getUserById`, `getProfileByUserId`, `getSessionsByUserId` (case-insensitive ID).
 5. `utils/formatDate.js`, `utils/languages.js`.
-6. `Loader`, `ErrorState`, `EmptyState` components.
+6. `Loader`, `ErrorState`, `EmptyState` components (`EmptyState` was later removed in Phase 7 as
+   unused; tables show their own empty row).
 7. Temporarily render row counts on placeholder pages to verify loading (marked `TEMP` in code;
    each is replaced when its page is built in Phases 3–6).
 
@@ -599,12 +600,22 @@ pie takes 1/3 and the bar chart 2/3 of the next row; below 1024px everything sta
 2. Consistent spacing, typography, colors, and visible focus styles.
 3. Remove unused code/files; zero console warnings/errors; `npm run build` succeeds.
 4. Update `README.md` with setup, scripts, folder overview, and link to this plan.
+5. Lazy-load the Analytics page so recharts is not in the initial bundle.
+
+**Outcome:** the review at 375 / 768 / 1280 px found no overflow or stacking issues on any page
+(including not-found states), so no layout changes were needed. Removed: `EmptyState` component,
+`visually-hidden` mixin, `src/setupTests.js`, unused packages, and the `npm test` script.
 
 **Manual test checklist**
 - [ ] Re-run Phases 1–6 checklists end to end.
-- [ ] Every page usable at 375 / 768 / 1280 px with no horizontal page overflow (tables scroll inside their container).
-- [ ] `npm run build` completes without errors.
+- [ ] Every page usable at 375 / 768 / 1280 px with no horizontal page overflow (tables and the
+      app-version chart scroll inside their card).
+- [ ] `npm install` then `npm run build` completes with "Compiled successfully" and no warnings;
+      the main JS bundle is ~98 kB gzipped, with a separate ~122 kB chunk for Analytics.
+- [ ] DevTools Network: opening `/users` does not download the Analytics chunk; navigating to
+      `/analytics` downloads it once (a brief "Loading analytics…" may appear).
 - [ ] No console errors or warnings during a full walkthrough.
+- [ ] `README.md` setup steps work from a fresh clone.
 
 ---
 
@@ -654,6 +665,9 @@ Scope to be decided later. Candidates from the PRD:
 | 28 | Date parsing                  | Parsed manually with a regex into local time (no `new Date(string)`), and formatted with fixed English month names so output is identical across browsers |
 | 29 | `react-is` dependency         | `react-is@^19` installed explicitly; otherwise recharts resolves an older copy that does not recognise React 19 elements |
 | 30 | Chart colors                  | `styles/chartTheme.js` mirrors the SCSS color variables, because recharts takes colors as JS props. Keep both in sync |
+| 31 | Analytics code-splitting      | `AnalyticsPage` is lazy-loaded (`React.lazy` + `Suspense` with the shared `Loader`), so recharts is downloaded only when `/analytics` is opened. Initial JS: ~98 kB gzipped instead of ~214 kB |
+| 32 | Unused dependencies           | Removed `web-vitals`, `@testing-library/*`, `src/setupTests.js`, and the `npm test` script (testing is manual only) |
+| 33 | Node version                  | Node 20+ (React Router 7 requires it)                                     |
 
 ### Implementer assumptions (minor, change freely)
 
@@ -674,8 +688,7 @@ Scope to be decided later. Candidates from the PRD:
   `METRIC_DESCRIPTIONS` in `metrics.js`, so it updates when a metric definition changes).
 - Analytics: DAU x-axis labels are `07 Sep`, tooltips `07 Sep 2025`; the bar chart's y-axis stops
   at the highest count; recharts' default entry animations are kept.
-- recharts adds ~118 kB gzipped to the bundle; lazy-loading the Analytics page is a possible
-  Phase 7 optimization.
+- recharts adds ~118 kB gzipped; it is split into the lazy-loaded Analytics chunk (Decision #31).
 
 ---
 

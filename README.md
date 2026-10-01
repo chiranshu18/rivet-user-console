@@ -1,70 +1,76 @@
-# Getting Started with Create React App
+# User Console
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+An internal console for browsing users, their profiles and sessions, and a small analytics
+dashboard. Built with React from the requirements in `resources/PRD.pdf`, using the CSV files as
+the only data source (no backend).
 
-## Available Scripts
+The full spec, metric definitions, decision log, and per-phase manual test checklists live in
+[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+| Route                 | What it does                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `/users`              | Users table: search by name or ID (partial, case-insensitive), status filter, sort by Join Time, pagination |
+| `/user/:id`           | User details and profile, full-size image modal, search by exact user ID, link to sessions      |
+| `/user/:id/sessions`  | Sessions table for one user: device filter, sort by duration, pagination                        |
+| `/analytics`          | Total users, average session duration, deleted user %, and DAU / New vs Returning / app version charts |
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+`/` redirects to `/users`; unknown routes and unknown user IDs show a "not found" state.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting started
 
-### `npm test`
+Requires Node.js 20+ (required by React Router 7; developed on Node 22) and npm.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm install
+npm start          # dev server at http://localhost:3000
+npm run build      # production build in build/
+```
 
-### `npm run build`
+To serve the production build locally: `npx serve -s build`. The `-s` flag sends unknown paths to
+`index.html`; any static host needs the same SPA rewrite so that refreshing `/user/u0001` works.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Tech stack
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- React 19 (Create React App / `react-scripts` 5), JavaScript
+- `react-router-dom` for routing
+- `papaparse` to parse CSVs in the browser
+- `recharts` for charts (the Analytics page is lazy-loaded, so recharts is only downloaded there)
+- SCSS Modules (`sass` pinned to `~1.77.8` to avoid deprecation warnings from CRA's sass-loader)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Data
 
-### `npm run eject`
+The CSVs are served from `public/data/` and fetched at runtime, once per file per session:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+| File                | Contents                                     |
+| ------------------- | -------------------------------------------- |
+| `users.csv`         | 100 users: ID, name, join/last-active time, status |
+| `user_profiles.csv` | One profile per user: app version, device, location, language, images |
+| `user_sessions.csv` | 686 sessions: start time, duration, device, entry/exit screen |
+| `analytics.csv`     | 60 days of daily active / new / returning / deleted counts |
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+`resources/` holds the original copies. To use new data, replace the files in `public/data/` with
+the same column headers.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Analytics metric logic is isolated in `src/analytics/metrics.js`; see Section 6 of the plan for
+the alternatives and how to switch.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Project structure
 
-## Learn More
+```
+src/
+  app/          App + route table
+  pages/        One folder per route (data wiring and page layout)
+  components/   Reusable presentational components (Component.jsx + Component.module.scss)
+  data/         CSV loading/caching, useCsv hooks, lookup selectors
+  analytics/    Dashboard metric calculations
+  hooks/        useDebounce, useSort, usePagination
+  utils/        Date formatting, language names, filters, sorters
+  styles/       SCSS variables, mixins, global styles, chart colors
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Testing
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Testing is manual: each phase in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) has a
+checklist with expected values taken from the CSV data.
