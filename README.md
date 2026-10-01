@@ -11,9 +11,12 @@ The full spec, metric definitions, decision log, and per-phase manual test check
 
 | Route                 | What it does                                                                                   |
 | --------------------- | ---------------------------------------------------------------------------------------------- |
-| `/users`              | Users table: search by name or ID (partial, case-insensitive), status filter, sort by Join Time, pagination |
+| `/users`              | Users table: search by name or ID (partial, case-insensitive), status filter, sort by Join Time, pagination, CSV export |
 | `/user/:id`           | User details and profile, full-size image modal, search by exact user ID, link to sessions      |
-| `/user/:id/sessions`  | Sessions table for one user: device filter, sort by duration, pagination                        |
+| `/user/:id/sessions`  | Sessions table for one user: device filter, sort by duration, pagination, CSV export            |
+
+"Export CSV" downloads every row matching the current search/filters (all pages, current sort)
+with the original CSV columns.
 | `/analytics`          | Total users, average session duration, deleted user %, and DAU / New vs Returning / app version charts |
 
 `/` redirects to `/users`; unknown routes and unknown user IDs show a "not found" state.

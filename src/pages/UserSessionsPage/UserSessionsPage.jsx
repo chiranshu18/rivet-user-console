@@ -7,6 +7,7 @@ import usePagination from '../../hooks/usePagination';
 import { filterBySelection } from '../../utils/filters';
 import { compareNumbers, sortRows } from '../../utils/sorters';
 import { formatDateTime } from '../../utils/formatDate';
+import { todayStamp } from '../../utils/csvExport';
 import DataTable from '../../components/DataTable/DataTable';
 import Pagination from '../../components/Pagination/Pagination';
 import MultiSelectFilter from '../../components/MultiSelectFilter/MultiSelectFilter';
@@ -16,11 +17,20 @@ import NotFoundState from '../../components/NotFoundState/NotFoundState';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import Panel from '../../components/Panel/Panel';
 import BackLink from '../../components/BackLink/BackLink';
+import ExportCsvButton from '../../components/ExportCsvButton/ExportCsvButton';
 import styles from './UserSessionsPage.module.scss';
 
 const DEVICE_OPTIONS = ['Desktop', 'Mobile'];
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const COMPARATORS = { session_duration_minutes: compareNumbers };
+const EXPORT_FIELDS = [
+  'user_id',
+  'session_start',
+  'session_duration_minutes',
+  'device',
+  'entry_screen',
+  'exit_screen',
+];
 
 const COLUMNS = [
   {
@@ -94,12 +104,19 @@ function UserSessionsPage() {
 
           <Panel
             toolbar={
-              <MultiSelectFilter
-                label="Device"
-                options={DEVICE_OPTIONS}
-                selected={devices}
-                onChange={setDevices}
-              />
+              <>
+                <MultiSelectFilter
+                  label="Device"
+                  options={DEVICE_OPTIONS}
+                  selected={devices}
+                  onChange={setDevices}
+                />
+                <ExportCsvButton
+                  rows={visibleSessions}
+                  fields={EXPORT_FIELDS}
+                  filename={`sessions-${user.user_id}-${todayStamp()}.csv`}
+                />
+              </>
             }
           >
             <DataTable

@@ -321,7 +321,7 @@ src/
   components/                 Reusable, presentational (each has Component.jsx + Component.module.scss)
     Layout/  Header/  DataTable/  Pagination/  SearchInput/  MultiSelectFilter/
     Modal/  StatusBadge/  MetricCard/  Loader/  ErrorState/  ChartCard/
-    SearchForm/  NotFoundState/  PageHeader/  Panel/  BackLink/  ThemeToggle/
+    SearchForm/  NotFoundState/  PageHeader/  Panel/  BackLink/  ThemeToggle/  ExportCsvButton/
   theme/
     ThemeContext.jsx          ThemeProvider + useTheme (light/dark, saved in localStorage)
   pages/                      Route-level containers (data wiring + composition)
@@ -341,6 +341,7 @@ src/
     formatDate.js             'YYYY-MM-DD HH:mm:ss' → '16 Jun 2025, 07:59'; chart labels '07 Sep' / '07 Sep 2025'
     languages.js              Code → full language name
     filters.js                Partial search match, multi-select filter
+    csvExport.js              Rows → CSV text (PapaParse), browser download, date stamp for file names
     sorters.js                Date, number, semver comparators
   styles/
     _themes.scss              Light + dark color palettes as CSS custom properties
@@ -399,6 +400,7 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `usePagination(rows, { defaultPageSize, resetKey })` | → `{ page, pageSize, pageCount, total, pageRows, setPage, setPageSize }`; resets to page 1 when `resetKey` or page size changes | Users, Sessions |
 | `sortRows(rows, sort, comparators)` (`utils/sorters.js`) | Sorted copy; stable, so ties keep CSV order. Comparators: `compareNumbers`, `compareDateTimes`, `compareSemver` | Users, Sessions, Analytics |
 | `filterByPartialSearch` / `filterBySelection` (`utils/filters.js`) | Case-insensitive "contains" search across fields; multi-select filter (empty = all) | Users, Sessions |
+| `ExportCsvButton`    | `rows`, `fields[]`, `filename` ("Export CSV (N)"; disabled when N = 0)           | Users, Sessions          |
 
 ---
 
@@ -418,7 +420,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 5     | User Sessions                          | Done        |
 | 6     | Analytics Dashboard                    | Done        |
 | 7     | Responsive polish & final QA           | Done        |
-| 8     | Bonus features                         | In progress (dark mode + keyboard a11y done; rest deferred) |
+| 8     | Bonus features                         | In progress (dark mode, keyboard a11y, CSV export done; rest deferred) |
 
 ---
 
@@ -630,7 +632,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | ---------------------------------------------------------------- | ----------- |
 | Light/dark theme toggle                                          | Done (8.1)  |
 | Persist filters (query params and/or localStorage)               | Not started |
-| Export filtered data to CSV                                      | Not started |
+| Export filtered data to CSV                                      | Done (8.3)  |
 | Keyboard accessibility (Tab focus, **Esc to close modal**)       | Done (8.2)  |
 | Deploy to Vercel/Netlify (includes SPA refresh/rewrite handling) | Not started |
 
@@ -702,6 +704,38 @@ Picked up one at a time, only when asked. Candidates from the PRD:
       show the tooltip moving across points/bars/slices.
 - [ ] Mouse clicks do not leave focus rings behind (rings appear only for keyboard focus).
 
+#### 8.3 — Export filtered data to CSV
+
+**Behavior**
+- "Export CSV (N)" button in the toolbar of the Users List and User Sessions tables (right side on
+  desktop; full width under the filters on mobile). N = rows that will be exported.
+- Exports **all rows matching the current search / filters, in the current sort order**, across
+  all pages (not just the visible page).
+- Columns and values are the **raw CSV ones** (same headers as the source file, e.g. `join_time`
+  as `2025-06-16 07:59:34`), so the file can be re-imported. The "Actions" column is not exported.
+  - Users: `user_id, name, join_time, status, last_active_time`
+  - Sessions: `user_id, session_start, session_duration_minutes, device, entry_screen, exit_screen`
+- File names: `users-YYYY-MM-DD.csv` and `sessions-<user_id>-YYYY-MM-DD.csv` (local date).
+- Disabled with tooltip "No rows to export" when nothing matches; otherwise tooltip
+  "Download N rows as CSV".
+
+**Implementation**
+1. `utils/csvExport.js`: `toCsv(rows, fields)` (PapaParse `unparse`, handles quoting),
+   `downloadCsv(filename, csv)` (Blob + temporary `<a download>`), `todayStamp()`.
+2. `components/ExportCsvButton`: reusable button; pages pass their filtered + sorted rows
+   (`visibleUsers` / `visibleSessions`) and an `EXPORT_FIELDS` list.
+
+**Manual test checklist**
+- [ ] `/users` with no filters: button reads **Export CSV (100)**; the file `users-<today>.csv`
+      has a header + **100** rows, first `u0001,User1,2025-06-16 07:59:34,Deleted,…`.
+- [ ] Search `User5` + Status Deleted + Join Time ascending → **Export CSV (5)**; file rows in
+      order **u0056, u0053, u0057, u0054, u0052**.
+- [ ] Search `xyz` → button disabled.
+- [ ] `/user/u0005/sessions` + Device Mobile → **Export CSV (3)**; file `sessions-u0005-<today>.csv`
+      with durations **19, 103, 39**.
+- [ ] The file opens correctly in a spreadsheet app (one column per field).
+- [ ] Button is reachable with Tab and works with Enter/Space; looks right in both themes.
+
 ---
 
 ## 10. Decision Log
@@ -743,6 +777,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | 33 | Node version                  | Node 20+ (React Router 7 requires it)                                     |
 | 34 | Theme (bonus 8.1)             | Light + dark. Default follows the OS; a manual choice is saved in `localStorage` and wins. Toggle is an icon button in the header. Colors are CSS custom properties switched by `data-theme` on `<html>` |
 | 35 | Keyboard a11y (bonus 8.2)     | Esc closes the modal and Tab is trapped inside it; skip-to-content link; charts keep recharts' keyboard layer (one Tab stop each, named, with focus ring) |
+| 36 | CSV export (bonus 8.3)        | Both tables; exports all filtered + sorted rows (all pages) with raw CSV headers/values; file names `users-<date>.csv` / `sessions-<user_id>-<date>.csv` |
 
 ### Implementer assumptions (minor, change freely)
 

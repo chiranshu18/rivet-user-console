@@ -7,6 +7,7 @@ import usePagination from '../../hooks/usePagination';
 import { filterByPartialSearch, filterBySelection } from '../../utils/filters';
 import { compareDateTimes, sortRows } from '../../utils/sorters';
 import { formatDateTime } from '../../utils/formatDate';
+import { todayStamp } from '../../utils/csvExport';
 import DataTable from '../../components/DataTable/DataTable';
 import Pagination from '../../components/Pagination/Pagination';
 import SearchInput from '../../components/SearchInput/SearchInput';
@@ -16,12 +17,14 @@ import Loader from '../../components/Loader/Loader';
 import ErrorState from '../../components/ErrorState/ErrorState';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import Panel from '../../components/Panel/Panel';
+import ExportCsvButton from '../../components/ExportCsvButton/ExportCsvButton';
 
 const SEARCH_DEBOUNCE_MS = 500;
 const SEARCH_FIELDS = ['name', 'user_id'];
 const STATUS_OPTIONS = ['New', 'Returning', 'Deleted'];
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const COMPARATORS = { join_time: compareDateTimes };
+const EXPORT_FIELDS = ['user_id', 'name', 'join_time', 'status', 'last_active_time'];
 
 const COLUMNS = [
   {
@@ -96,6 +99,11 @@ function UsersPage() {
                 options={STATUS_OPTIONS}
                 selected={statuses}
                 onChange={setStatuses}
+              />
+              <ExportCsvButton
+                rows={visibleUsers}
+                fields={EXPORT_FIELDS}
+                filename={`users-${todayStamp()}.csv`}
               />
             </>
           }
