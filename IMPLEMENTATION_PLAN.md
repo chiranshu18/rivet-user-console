@@ -422,7 +422,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 5     | User Sessions                          | Done        |
 | 6     | Analytics Dashboard                    | Done        |
 | 7     | Responsive polish & final QA           | Done        |
-| 8     | Bonus features                         | In progress (dark mode, keyboard a11y, CSV export, filter persistence done; deploy deferred) |
+| 8     | Bonus features                         | Done (dark mode, keyboard a11y, CSV export, filter persistence; deployed to [Vercel](https://rivet-user-console-pi.vercel.app/)) |
 
 ---
 

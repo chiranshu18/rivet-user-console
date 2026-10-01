@@ -4,31 +4,30 @@ An internal console for browsing users, their profiles and sessions, and a small
 dashboard. Built with React from the requirements in `resources/PRD.pdf`, using the CSV files as
 the only data source (no backend).
 
+**Live demo:** [rivet-user-console-pi.vercel.app](https://rivet-user-console-pi.vercel.app/)
+
 The full spec, metric definitions, decision log, and per-phase manual test checklists live in
 [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
 ## Features
 
-| Route                 | What it does                                                                                   |
-| --------------------- | ---------------------------------------------------------------------------------------------- |
-| `/users`              | Users table: search by name or ID (partial, case-insensitive), status filter, sort by Join Time, pagination, CSV export |
-| `/user/:id`           | User details and profile, full-size image modal, search by exact user ID, link to sessions      |
-| `/user/:id/sessions`  | Sessions table for one user: device filter, sort by duration, pagination, CSV export            |
-| `/analytics`          | Total users, average session duration, deleted user %, and DAU / New vs Returning / app version charts |
+### Core
 
-`/` redirects to `/users`; unknown routes and unknown user IDs show a "not found" state.
+- **Users list (`/users`)**: search by name or ID, filter by status, sort by join time, paginate.
+- **User details (`/user/:id`)**: profile info, full-size image preview, jump to any user by ID.
+- **User sessions (`/user/:id/sessions`)**: per-user sessions with device filter, duration sort, and pagination.
+- **Analytics (`/analytics`)**: total users, average session duration, and deleted user %, plus
+  charts for daily active users, new vs returning users, and app version distribution.
+- **Not found states**: unknown routes and user IDs show a "not found" page.
+- **Responsive layout** for desktop and mobile.
 
-"Export CSV" downloads every row matching the current search/filters (all pages, current sort)
-with the original CSV columns.
+### Bonus
 
-Table settings are remembered in `localStorage` across visits: search, status filter, sort, page,
-and page size on Users; device filter, sort, and page size on Sessions (shared across users).
-
-A light/dark theme toggle sits in the header. The first visit follows the OS setting; a manual
-choice is remembered in `localStorage`.
-
-The app is keyboard accessible: visible focus rings, a "Skip to main content" link, Esc closes the
-image modal (Tab stays inside it while open), and charts can be explored with the arrow keys.
+- **Light/dark theme**: follows the OS setting by default; a manual choice is remembered.
+- **Keyboard accessibility**: visible focus rings, a skip link, Esc closes the image modal, and
+  charts can be explored with the arrow keys.
+- **CSV export**: downloads every row matching the current filters and sort.
+- **Remembered filters**: search, filters, sort, and page size persist across visits (`localStorage`).
 
 ## Getting started
 
@@ -42,6 +41,12 @@ npm run build      # production build in build/
 
 To serve the production build locally: `npx serve -s build`. The `-s` flag sends unknown paths to
 `index.html`; any static host needs the same SPA rewrite so that refreshing `/user/u0001` works.
+
+## Deployment
+
+Deployed on [Vercel](https://vercel.com) from the `master` branch; every push redeploys
+automatically. Vercel detects Create React App with no extra settings or environment variables.
+`vercel.json` adds the SPA rewrite so deep links like `/user/u0001` work on refresh.
 
 ## Tech stack
 
