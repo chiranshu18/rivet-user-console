@@ -1,11 +1,47 @@
-// Mirrors src/styles/_variables.scss; recharts needs colors as JS strings.
-export const CHART_COLORS = {
-  primary: '#2f6fed',
-  grid: '#e3e6ea',
-  axis: '#616e7c',
-  new: '#1f8a4c',
-  returning: '#2f6fed',
-  deleted: '#b42318',
+import { useMemo } from 'react';
+import { useTheme } from '../theme/ThemeContext';
+
+const COLOR_VARIABLES = {
+  primary: '--color-primary',
+  grid: '--color-border',
+  axis: '--color-text-muted',
+  surface: '--color-surface',
+  text: '--color-text',
+  new: '--color-status-new',
+  returning: '--color-status-returning',
+  deleted: '--color-status-deleted',
 };
 
-export const AXIS_TICK = { fontSize: 12, fill: CHART_COLORS.axis };
+/**
+ * Chart colors and shared recharts styles for the active theme.
+ * recharts takes colors as JS props, so they are read from the CSS variables in _themes.scss.
+ */
+export function useChartTheme() {
+  const { theme } = useTheme();
+
+  return useMemo(() => {
+    const computed = getComputedStyle(document.documentElement);
+    const colors = Object.fromEntries(
+      Object.entries(COLOR_VARIABLES).map(([key, cssVar]) => [
+        key,
+        computed.getPropertyValue(cssVar).trim(),
+      ])
+    );
+
+    return {
+      colors,
+      axisTick: { fontSize: 12, fill: colors.axis },
+      tooltip: {
+        contentStyle: {
+          background: colors.surface,
+          border: `1px solid ${colors.grid}`,
+          borderRadius: 4,
+          color: colors.text,
+        },
+        labelStyle: { color: colors.text },
+      },
+    };
+    // `theme` is the trigger: the CSS variables change when it does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme]);
+}

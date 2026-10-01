@@ -40,7 +40,7 @@
   border: 1px solid $color-primary;
   border-radius: $radius-sm;
   background: $color-primary;
-  color: #fff;
+  color: $color-on-primary;
   font-weight: $font-weight-medium;
   white-space: nowrap;
   cursor: pointer;
@@ -48,7 +48,7 @@
   &:hover {
     background: $color-primary-hover;
     border-color: $color-primary-hover;
-    color: #fff;
+    color: $color-on-primary;
     text-decoration: none;
   }
 }

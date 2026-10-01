@@ -25,6 +25,20 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>User Console</title>
+    <script>
+      // Apply the theme before first paint to avoid a light flash. Saved choice wins; otherwise
+      // follow the OS setting. The key must match STORAGE_KEY in src/theme/ThemeContext.jsx.
+      (function () {
+        var theme;
+        try {
+          theme = localStorage.getItem('user-console-theme');
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

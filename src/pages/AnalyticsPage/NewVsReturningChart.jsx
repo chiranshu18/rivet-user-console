@@ -1,16 +1,12 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { CHART_COLORS } from '../../styles/chartTheme';
-
-const SLICE_COLORS = {
-  New: CHART_COLORS.new,
-  Returning: CHART_COLORS.returning,
-  Deleted: CHART_COLORS.deleted,
-};
+import { useChartTheme } from '../../styles/chartTheme';
 
 const formatPercent = (fraction) => `${(fraction * 100).toFixed(1)}%`;
 
 /** @param {{ data: { name: string, value: number }[] }} props */
 function NewVsReturningChart({ data }) {
+  const { colors, tooltip } = useChartTheme();
+  const sliceColors = { New: colors.new, Returning: colors.returning, Deleted: colors.deleted };
   const total = data.reduce((sum, slice) => sum + slice.value, 0);
 
   return (
@@ -21,13 +17,15 @@ function NewVsReturningChart({ data }) {
           dataKey="value"
           nameKey="name"
           outerRadius="70%"
+          stroke={colors.surface}
           label={({ percent }) => formatPercent(percent)}
         >
           {data.map((slice) => (
-            <Cell key={slice.name} fill={SLICE_COLORS[slice.name] ?? CHART_COLORS.primary} />
+            <Cell key={slice.name} fill={sliceColors[slice.name] ?? colors.primary} />
           ))}
         </Pie>
         <Tooltip
+          {...tooltip}
           formatter={(value, name) => [
             `${value} users (${formatPercent(total ? value / total : 0)})`,
             name,

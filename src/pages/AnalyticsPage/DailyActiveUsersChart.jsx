@@ -7,33 +7,40 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { AXIS_TICK, CHART_COLORS } from '../../styles/chartTheme';
+import { useChartTheme } from '../../styles/chartTheme';
 import { formatDate, formatShortDate } from '../../utils/formatDate';
 
 /** @param {{ data: { date: string, value: number }[] }} props */
 function DailyActiveUsersChart({ data }) {
+  const { colors, axisTick, tooltip } = useChartTheme();
+
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} />
+        <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="date"
           tickFormatter={formatShortDate}
-          tick={AXIS_TICK}
+          tick={axisTick}
           tickLine={false}
-          axisLine={{ stroke: CHART_COLORS.grid }}
+          axisLine={{ stroke: colors.grid }}
           minTickGap={24}
         />
-        <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={40} />
-        <Tooltip labelFormatter={formatDate} formatter={(value) => [value, 'Active users']} />
+        <YAxis tick={axisTick} tickLine={false} axisLine={false} width={40} />
+        <Tooltip
+          {...tooltip}
+          cursor={{ stroke: colors.grid }}
+          labelFormatter={formatDate}
+          formatter={(value) => [value, 'Active users']}
+        />
         <Line
           type="monotone"
           dataKey="value"
           name="Active users"
-          stroke={CHART_COLORS.primary}
+          stroke={colors.primary}
           strokeWidth={2}
           dot={false}
-          activeDot={{ r: 4 }}
+          activeDot={{ r: 4, stroke: colors.surface }}
         />
       </LineChart>
     </ResponsiveContainer>

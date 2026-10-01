@@ -18,6 +18,9 @@ The full spec, metric definitions, decision log, and per-phase manual test check
 
 `/` redirects to `/users`; unknown routes and unknown user IDs show a "not found" state.
 
+A light/dark theme toggle sits in the header. The first visit follows the OS setting; a manual
+choice is remembered in `localStorage`.
+
 ## Getting started
 
 Requires Node.js 20+ (required by React Router 7; developed on Node 22) and npm.
@@ -67,7 +70,8 @@ src/
   analytics/    Dashboard metric calculations
   hooks/        useDebounce, useSort, usePagination
   utils/        Date formatting, language names, filters, sorters
-  styles/       SCSS variables, mixins, global styles, chart colors
+  theme/        Light/dark theme state (ThemeProvider, useTheme)
+  styles/       Theme palettes, SCSS variables, mixins, global styles, chart colors
 ```
 
 ## Testing

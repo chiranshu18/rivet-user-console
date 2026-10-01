@@ -31,6 +31,12 @@
   }
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
 .nav {
   display: flex;
   gap: $space-1;

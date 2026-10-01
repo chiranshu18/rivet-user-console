@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import ThemeToggle from '../ThemeToggle/ThemeToggle';
 import styles from './Header.module.scss';
 
 const NAV_ITEMS = [
@@ -15,24 +16,27 @@ function Header() {
         <Link to="/users" className={styles.brand}>
           User Console
         </Link>
-        <nav aria-label="Main navigation">
-          <ul className={styles.nav}>
-            {NAV_ITEMS.map(({ to, label, matches }) => {
-              const isActive = matches(pathname);
-              return (
-                <li key={to}>
-                  <Link
-                    to={to}
-                    className={isActive ? `${styles.link} ${styles.active}` : styles.link}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    {label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        <div className={styles.actions}>
+          <nav aria-label="Main navigation">
+            <ul className={styles.nav}>
+              {NAV_ITEMS.map(({ to, label, matches }) => {
+                const isActive = matches(pathname);
+                return (
+                  <li key={to}>
+                    <Link
+                      to={to}
+                      className={isActive ? `${styles.link} ${styles.active}` : styles.link}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

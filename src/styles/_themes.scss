@@ -1,0 +1,54 @@
+// Theme palettes. The active theme is the `data-theme` attribute on <html>, set before React
+// renders by the inline script in public/index.html and updated by ThemeProvider.
+
+:root {
+  color-scheme: light;
+
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-border: #e3e6ea;
+  --color-border-strong: #c4cad1;
+  --color-text: #1f2933;
+  --color-text-muted: #616e7c;
+  --color-primary: #2f6fed;
+  --color-primary-hover: #1f5bd1;
+  --color-primary-soft: #e8f0fe;
+  --color-on-primary: #ffffff;
+  --color-danger: #d64545;
+  --color-backdrop: rgba(16, 24, 40, 0.6);
+
+  --color-status-new: #1f8a4c;
+  --color-status-new-bg: #e3f6ea;
+  --color-status-returning: #2f6fed;
+  --color-status-returning-bg: #e8f0fe;
+  --color-status-deleted: #b42318;
+  --color-status-deleted-bg: #fdecea;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #111418;
+  --color-surface: #1a1f25;
+  --color-border: #2c333b;
+  --color-border-strong: #46505b;
+  --color-text: #e6e9ed;
+  --color-text-muted: #9aa5b1;
+  --color-primary: #6b9bf5;
+  --color-primary-hover: #8ab0f7;
+  --color-primary-soft: #1f2b45;
+  --color-on-primary: #0b1220;
+  --color-danger: #f07272;
+  --color-backdrop: rgba(0, 0, 0, 0.7);
+
+  --color-status-new: #4cc38a;
+  --color-status-new-bg: #16301f;
+  --color-status-returning: #8ab0f7;
+  --color-status-returning-bg: #1f2b45;
+  --color-status-deleted: #f28b82;
+  --color-status-deleted-bg: #3a1d1b;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+}

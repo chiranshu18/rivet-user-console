@@ -316,12 +316,14 @@ public/
 src/
   index.js                    Entry; imports styles/global.scss
   app/
-    App.jsx                   Router + Layout
+    App.jsx                   ThemeProvider + Router + Layout
     routes.jsx                Route table
   components/                 Reusable, presentational (each has Component.jsx + Component.module.scss)
     Layout/  Header/  DataTable/  Pagination/  SearchInput/  MultiSelectFilter/
     Modal/  StatusBadge/  MetricCard/  Loader/  ErrorState/  ChartCard/
-    SearchForm/  NotFoundState/  PageHeader/  Panel/  BackLink/
+    SearchForm/  NotFoundState/  PageHeader/  Panel/  BackLink/  ThemeToggle/
+  theme/
+    ThemeContext.jsx          ThemeProvider + useTheme (light/dark, saved in localStorage)
   pages/                      Route-level containers (data wiring + composition)
     UsersPage/  UserDetailsPage/  UserSessionsPage/  AnalyticsPage/  NotFoundPage/
     AnalyticsPage/            Also holds the three chart components (DAU, New vs Returning, App Version)
@@ -341,10 +343,11 @@ src/
     filters.js                Partial search match, multi-select filter
     sorters.js                Date, number, semver comparators
   styles/
-    _variables.scss           Colors, spacing, breakpoints, typography
+    _themes.scss              Light + dark color palettes as CSS custom properties
+    _variables.scss           Spacing, breakpoints, typography; color variables point to the CSS custom properties
     _mixins.scss              Breakpoint mixins, focus ring, etc.
-    global.scss               Reset + base styles
-    chartTheme.js             Chart colors as JS strings (recharts cannot read SCSS variables)
+    global.scss               Reset + base styles (includes _themes.scss)
+    chartTheme.js             useChartTheme(): reads the active palette for recharts (JS color props)
 ```
 
 ### Data flow
@@ -415,7 +418,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 5     | User Sessions                          | Done        |
 | 6     | Analytics Dashboard                    | Done        |
 | 7     | Responsive polish & final QA           | Done        |
-| 8     | Bonus features (deferred)              | Deferred    |
+| 8     | Bonus features                         | In progress (dark mode done; rest deferred) |
 
 ---
 
@@ -619,15 +622,51 @@ pie takes 1/3 and the bar chart 2/3 of the next row; below 1024px everything sta
 
 ---
 
-### Phase 8 — Bonus features (deferred, single task)
+### Phase 8 — Bonus features
 
-Scope to be decided later. Candidates from the PRD:
+Picked up one at a time, only when asked. Candidates from the PRD:
 
-- Persist filters (query params and/or localStorage)
-- Light/dark theme toggle
-- Export filtered data to CSV
-- Keyboard accessibility (Tab focus, **Esc to close modal**)
-- Deploy to Vercel/Netlify (includes SPA refresh/rewrite handling)
+| Feature                                                          | Status      |
+| ---------------------------------------------------------------- | ----------- |
+| Light/dark theme toggle                                          | Done (8.1)  |
+| Persist filters (query params and/or localStorage)               | Not started |
+| Export filtered data to CSV                                      | Not started |
+| Keyboard accessibility (Tab focus, **Esc to close modal**)       | Not started |
+| Deploy to Vercel/Netlify (includes SPA refresh/rewrite handling) | Not started |
+
+#### 8.1 — Light/dark theme toggle
+
+**Behavior**
+- Icon button at the right of the header (moon in light theme, sun in dark theme). Its label and
+  tooltip say what it does ("Switch to dark theme" / "Switch to light theme").
+- First visit follows the OS setting (`prefers-color-scheme`). Once toggled, the choice is saved in
+  `localStorage` (`user-console-theme`) and wins over the OS setting on later visits.
+- No flash of the wrong theme on load: an inline script in `public/index.html` sets
+  `data-theme` on `<html>` before React renders.
+- Native controls (checkboxes, selects, scrollbars) follow the theme via `color-scheme`.
+
+**Implementation**
+1. `styles/_themes.scss`: both palettes as CSS custom properties on `:root` and
+   `:root[data-theme='dark']`. `_variables.scss` color variables now point to them
+   (e.g. `$color-bg: var(--color-bg)`), so component styles were not changed.
+2. Added `--color-on-primary` (button text) and `--color-backdrop` (modal); removed the last
+   hard-coded colors from `_mixins.scss` and `Modal.module.scss`.
+3. `theme/ThemeContext.jsx`: `ThemeProvider` + `useTheme()`; wraps the app in `App.jsx`.
+4. `components/ThemeToggle`: the header button.
+5. `styles/chartTheme.js` → `useChartTheme()`: reads the palette from the CSS variables and
+   recomputes when the theme changes; tooltips, pie slice borders, and active dots use theme colors.
+
+**Manual test checklist**
+- [ ] Clear `localStorage`; with the OS in dark mode the app opens dark, in light mode it opens light.
+- [ ] Clicking the header button switches every page (Users, User Details + image modal,
+      Sessions, Analytics, 404) between themes instantly; the icon and tooltip swap.
+- [ ] Reload after toggling: the chosen theme is kept (even if it differs from the OS) with no
+      light flash.
+- [ ] Analytics in dark mode: line/bar/grid/axis colors and pie slices switch with the theme;
+      tooltips have a dark background with readable text.
+- [ ] Status badges, links, focus rings, checkboxes, and the page-size select are readable in both themes.
+- [ ] The toggle is reachable with Tab and shows the focus ring; Enter/Space toggles it.
+- [ ] At 375px the header (brand, nav, toggle) wraps without overflow.
 
 ---
 
@@ -658,16 +697,17 @@ Scope to be decided later. Candidates from the PRD:
 | 21 | Data quirks                   | Displayed as-is                                                          |
 | 22 | Analytics metric sources      | Implementer's choice, "consistent with Users table" — see Section 6      |
 | 23 | Static-host refresh           | Deferred to deploy bonus                                                 |
-| 24 | Bonus features                | Deferred as a single task                                                |
+| 24 | Bonus features                | Deferred; picked up one at a time when asked (dark mode done)            |
 | 25 | `sass` version                | Pinned to `~1.77.8`: CRA's sass-loader uses the legacy Sass JS API, which newer `sass` versions flag with deprecation warnings on every compile |
 | 26 | Header active state           | "Users" is highlighted on `/users`, `/user/:id`, and `/user/:id/sessions`  |
 | 27 | CSV validation                | Each file's header columns are checked after parsing. The dev server returns `index.html` (HTTP 200) for missing files, so a status check alone would not catch them |
 | 28 | Date parsing                  | Parsed manually with a regex into local time (no `new Date(string)`), and formatted with fixed English month names so output is identical across browsers |
 | 29 | `react-is` dependency         | `react-is@^19` installed explicitly; otherwise recharts resolves an older copy that does not recognise React 19 elements |
-| 30 | Chart colors                  | `styles/chartTheme.js` mirrors the SCSS color variables, because recharts takes colors as JS props. Keep both in sync |
+| 30 | Chart colors                  | recharts takes colors as JS props, so `useChartTheme()` (`styles/chartTheme.js`) reads them from the theme's CSS variables. Single source of truth: `_themes.scss` (originally a hard-coded copy; changed in Phase 8.1) |
 | 31 | Analytics code-splitting      | `AnalyticsPage` is lazy-loaded (`React.lazy` + `Suspense` with the shared `Loader`), so recharts is downloaded only when `/analytics` is opened. Initial JS: ~98 kB gzipped instead of ~214 kB |
 | 32 | Unused dependencies           | Removed `web-vitals`, `@testing-library/*`, `src/setupTests.js`, and the `npm test` script (testing is manual only) |
 | 33 | Node version                  | Node 20+ (React Router 7 requires it)                                     |
+| 34 | Theme (bonus 8.1)             | Light + dark. Default follows the OS; a manual choice is saved in `localStorage` and wins. Toggle is an icon button in the header. Colors are CSS custom properties switched by `data-theme` on `<html>` |
 
 ### Implementer assumptions (minor, change freely)
 
@@ -697,7 +737,7 @@ Scope to be decided later. Candidates from the PRD:
 - Any backend / real API; data is read-only CSV.
 - Editing, creating, or deleting users.
 - Automated tests (manual checklists only).
-- Bonus features (Phase 8).
+- Remaining bonus features (Phase 8), except the theme toggle which is done.
 
 ### Pending changes
 
