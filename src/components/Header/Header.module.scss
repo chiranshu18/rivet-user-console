@@ -1,0 +1,64 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.header {
+  background: $color-surface;
+  border-bottom: 1px solid $color-border;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.inner {
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: $space-2 $space-4;
+  min-height: $header-height;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2 $space-4;
+}
+
+.brand {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.nav {
+  display: flex;
+  gap: $space-1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.link {
+  display: inline-block;
+  padding: $space-2 $space-3;
+  border-radius: $radius-sm;
+  color: $color-text-muted;
+  font-weight: $font-weight-medium;
+
+  &:hover {
+    color: $color-text;
+    background: $color-bg;
+    text-decoration: none;
+  }
+}
+
+.active {
+  color: $color-primary;
+  background: $color-primary-soft;
+
+  &:hover {
+    color: $color-primary;
+    background: $color-primary-soft;
+  }
+}

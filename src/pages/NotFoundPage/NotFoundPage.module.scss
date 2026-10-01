@@ -1,0 +1,22 @@
+@use '../../styles/variables' as *;
+@use '../../styles/mixins' as *;
+
+.notFound {
+  @include card;
+  max-width: 480px;
+  margin: $space-6 auto;
+  padding: $space-6 $space-5;
+  text-align: center;
+}
+
+.code {
+  margin: 0 0 $space-2;
+  font-size: 3rem;
+  font-weight: $font-weight-bold;
+  line-height: 1;
+  color: $color-text-muted;
+}
+
+.message {
+  color: $color-text-muted;
+}
