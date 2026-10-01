@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCsvs } from '../../data/useCsv';
 import { getSessionsByUserId, getUserById } from '../../data/selectors';
+import usePersistentState from '../../hooks/usePersistentState';
 import useSort from '../../hooks/useSort';
 import usePagination from '../../hooks/usePagination';
 import { filterBySelection } from '../../utils/filters';
@@ -32,6 +33,16 @@ const EXPORT_FIELDS = [
   'exit_screen',
 ];
 
+// Remembered across visits and shared by all users' session tables. The page number is not
+// remembered because it does not carry over meaningfully between users.
+const STORAGE_KEYS = {
+  devices: 'user-console:sessions:devices',
+  sort: 'user-console:sessions:sort',
+  pageSize: 'user-console:sessions:pageSize',
+};
+const isDeviceList = (value) =>
+  Array.isArray(value) && value.every((device) => DEVICE_OPTIONS.includes(device));
+
 const COLUMNS = [
   {
     key: 'session_start',
@@ -49,8 +60,11 @@ const getRowKey = (session) => session.rowKey;
 function UserSessionsPage() {
   const { id } = useParams();
   const { data, loading, error } = useCsvs(['users', 'sessions']);
-  const [devices, setDevices] = useState([]);
-  const { sort, toggleSort } = useSort();
+  const [devices, setDevices] = usePersistentState(STORAGE_KEYS.devices, [], isDeviceList);
+  const { sort, toggleSort } = useSort({
+    storageKey: STORAGE_KEYS.sort,
+    sortableKeys: ['session_duration_minutes'],
+  });
 
   const user = data ? getUserById(data.users, id) : null;
 
@@ -70,7 +84,9 @@ function UserSessionsPage() {
 
   const pagination = usePagination(visibleSessions, {
     defaultPageSize: PAGE_SIZE_OPTIONS[0],
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
     resetKey: JSON.stringify([id, devices, sort]),
+    pageSizeStorageKey: STORAGE_KEYS.pageSize,
   });
 
   const emptyMessage =

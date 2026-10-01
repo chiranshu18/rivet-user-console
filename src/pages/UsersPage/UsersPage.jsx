@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import useCsv from '../../data/useCsv';
 import useDebounce from '../../hooks/useDebounce';
+import usePersistentState from '../../hooks/usePersistentState';
 import useSort from '../../hooks/useSort';
 import usePagination from '../../hooks/usePagination';
 import { filterByPartialSearch, filterBySelection } from '../../utils/filters';
@@ -25,6 +26,18 @@ const STATUS_OPTIONS = ['New', 'Returning', 'Deleted'];
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const COMPARATORS = { join_time: compareDateTimes };
 const EXPORT_FIELDS = ['user_id', 'name', 'join_time', 'status', 'last_active_time'];
+
+// Table state remembered across visits (localStorage).
+const STORAGE_KEYS = {
+  search: 'user-console:users:search',
+  statuses: 'user-console:users:statuses',
+  sort: 'user-console:users:sort',
+  page: 'user-console:users:page',
+  pageSize: 'user-console:users:pageSize',
+};
+const isString = (value) => typeof value === 'string';
+const isStatusList = (value) =>
+  Array.isArray(value) && value.every((status) => STATUS_OPTIONS.includes(status));
 
 const COLUMNS = [
   {
@@ -60,9 +73,12 @@ const getRowKey = (user) => user.user_id;
 
 function UsersPage() {
   const { data: users, loading, error } = useCsv('users');
-  const [search, setSearch] = useState('');
-  const [statuses, setStatuses] = useState([]);
-  const { sort, toggleSort } = useSort();
+  const [search, setSearch] = usePersistentState(STORAGE_KEYS.search, '', isString);
+  const [statuses, setStatuses] = usePersistentState(STORAGE_KEYS.statuses, [], isStatusList);
+  const { sort, toggleSort } = useSort({
+    storageKey: STORAGE_KEYS.sort,
+    sortableKeys: ['join_time'],
+  });
   const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
 
   const visibleUsers = useMemo(() => {
@@ -74,7 +90,10 @@ function UsersPage() {
 
   const pagination = usePagination(visibleUsers, {
     defaultPageSize: PAGE_SIZE_OPTIONS[0],
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
     resetKey: JSON.stringify([debouncedSearch, statuses, sort]),
+    pageStorageKey: STORAGE_KEYS.page,
+    pageSizeStorageKey: STORAGE_KEYS.pageSize,
   });
 
   return (
