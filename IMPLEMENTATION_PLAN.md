@@ -165,7 +165,7 @@ CSV files are copied from `resources/` to `public/data/` and fetched at runtime
 
 | Feature        | Spec                                                                                                     |
 | -------------- | -------------------------------------------------------------------------------------------------------- |
-| Search         | Single input matching **Name OR User ID**, **exact match**, **case-insensitive**, trimmed. Updates as you type with **500 ms debounce**. Empty input = all rows |
+| Search         | Single input matching **Name OR User ID**, **exact match**, **case-insensitive**, trimmed. Updates as you type with **500 ms debounce**. Empty input = all rows. ⚠️ May change to partial match — see [Pending changes](#pending-changes) |
 | Status filter  | **Multi-select**: New, Returning, Deleted                                                                |
 | Sort           | **Join Time** only (3-state cycle)                                                                        |
 | User ID        | Rendered as a link → `/user/:id`                                                                          |
@@ -321,6 +321,7 @@ src/
   components/                 Reusable, presentational (each has Component.jsx + Component.module.scss)
     Layout/  Header/  DataTable/  Pagination/  SearchInput/  MultiSelectFilter/
     Modal/  StatusBadge/  MetricCard/  Loader/  ErrorState/  EmptyState/  ChartCard/
+    SearchForm/  NotFoundState/
   pages/                      Route-level containers (data wiring + composition)
     UsersPage/  UserDetailsPage/  UserSessionsPage/  AnalyticsPage/  NotFoundPage/
   data/
@@ -376,7 +377,9 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `Pagination`         | `page`, `pageCount`, `pageSize`, `pageSizeOptions`, `total`, `onPageChange`, `onPageSizeChange` | Users, Sessions |
 | `SearchInput`        | `value`, `onChange`, `placeholder`                                              | Users                    |
 | `MultiSelectFilter`  | `label`, `options`, `selected[]`, `onChange`                                    | Users (Status), Sessions (Device) |
-| `Modal`              | `isOpen`, `onClose`, `title`, `children` (closes on button + backdrop)          | User Details             |
+| `Modal`              | `isOpen`, `onClose`, `title`, `children` (closes on button + backdrop; locks page scroll; focuses Close on open and restores focus on close) | User Details |
+| `SearchForm`         | `label`, `placeholder`, `value`, `onChange`, `onSubmit`, `error` (submit on Enter/button, inline error) | User Details |
+| `NotFoundState`      | `code?`, `title`, `message?`, `linkTo?`, `linkLabel?`                           | 404 page, User Details, User Sessions |
 | `StatusBadge`        | `status`                                                                        | Users, User Details      |
 | `MetricCard`         | `label`, `value`                                                                | Analytics                |
 | `ChartCard`          | `title`, `children`                                                             | Analytics                |
@@ -403,7 +406,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 1     | Project setup, app shell & routing     | Done        |
 | 2     | Data layer                             | Done        |
 | 3     | Users List                             | Done        |
-| 4     | User Details                           | Not started |
+| 4     | User Details                           | Done        |
 | 5     | User Sessions                          | Not started |
 | 6     | Analytics Dashboard                    | Not started |
 | 7     | Responsive polish & final QA           | Not started |
@@ -508,10 +511,13 @@ previous phase's checklist passes. Expected values below are taken from the actu
 - [ ] `/user/u0002` shows: User2, New, Join Time **31 Oct 2025, 07:59**, App Version **v2.5.8**,
       Device **Macbook Pro**, Location **Delhi**, Language **Bengali**.
 - [ ] `/user/u0010` shows: v3.8.9, Pixel 6, Delhi, **Tamil**.
-- [ ] Clicking the thumbnail opens a modal with the 512px image; close button closes it; clicking
-      the backdrop closes it; clicking the image itself does **not** close it.
-- [ ] Search `U0010` + Enter → navigates to `/user/u0010`. Search `u9999` → inline "User not found",
-      URL unchanged.
+- [ ] Clicking the thumbnail opens a modal with the full image (`profile_full_url`); close button
+      closes it; clicking the backdrop closes it; clicking the image itself does **not** close it.
+      (The URL asks for 512px but dicebear serves 256px; it is scaled to fit the modal.)
+- [ ] While the modal is open the page behind does not scroll; after closing, focus returns to the thumbnail.
+- [ ] Search `U0010` + Enter → navigates to `/user/u0010` and the input clears. Search `u9999` →
+      inline "User not found: u9999", URL unchanged. Typing again clears the error.
+- [ ] Submitting an empty search shows "Enter a user ID, e.g. u0010."
 - [ ] `/user/u9999` shows "User not found" with a link back to `/users`.
 - [ ] "Back to Users" → `/users`; "View Sessions" → `/user/u0002/sessions`.
 - [ ] Layout is readable at 375px.
@@ -610,7 +616,7 @@ Scope to be decided later. Candidates from the PRD:
 | 9  | Pagination                    | Both tables; 10/25/50 (default 10); independent per table; reset to page 1 on change |
 | 10 | Default table order           | CSV order                                                                |
 | 11 | Sort cycle                    | asc → desc → none                                                        |
-| 12 | Users search                  | Exact match on Name or ID, case-insensitive, live with 500 ms debounce   |
+| 12 | Users search                  | Exact match on Name or ID, case-insensitive, live with 500 ms debounce. May switch to partial match later (see [Pending changes](#pending-changes)) |
 | 13 | Status filter                 | Multi-select                                                             |
 | 14 | Device filter (Sessions)      | Multi-select                                                             |
 | 15 | Sessions entry points         | Users List row link + User Details button                                |
@@ -635,6 +641,10 @@ Scope to be decided later. Candidates from the PRD:
 - User Details also shows Name, User ID, and Status for context (beyond PRD-required fields).
 - Metric display precision: 1 decimal place.
 - Pagination UI: Prev/Next + "Page X of Y" + "Showing A–B of N".
+- User Details search: empty submit shows "Enter a user ID, e.g. u0010."; a successful search clears
+  the input; the search stays visible on the "User not found" state.
+- Modal locks page scroll while open and returns focus to the thumbnail on close (Esc is still in
+  the bonus task).
 
 ---
 
@@ -644,6 +654,31 @@ Scope to be decided later. Candidates from the PRD:
 - Editing, creating, or deleting users.
 - Automated tests (manual checklists only).
 - Bonus features (Phase 8).
+
+### Pending changes
+
+Changes already identified but intentionally not built yet. Pick these up only when asked.
+
+#### P1 — Users List search: exact match → partial match (case-insensitive)
+
+- **Current:** `/users` search keeps a row only if Name or User ID **equals** the query
+  (case-insensitive, trimmed). `User5` matches only User5.
+- **Possible change:** keep a row if Name or User ID **contains** the query (case-insensitive,
+  trimmed). Debounce (500 ms), empty-query behavior, and the filter → sort → paginate pipeline stay
+  the same.
+- **Scope:** Users List search only. The User Details "Search by User ID" stays exact (it navigates
+  to one user) unless decided otherwise.
+- **How to implement:**
+  1. Add `filterByPartialSearch(rows, query, fields)` to `src/utils/filters.js`
+     (same as `filterByExactSearch` but uses `.includes(target)` instead of `=== target`).
+  2. Use it in `src/pages/UsersPage/UsersPage.jsx` instead of `filterByExactSearch`.
+  3. Update the search label/placeholder (drop "exact match").
+  4. Update Section 5.3, Decision Log #12, and the Phase 3 checklist.
+- **Phase 3 checklist values after the change:**
+  - `User5` → **11** rows (User5, User50–User59)
+  - `u005` → **10** rows (u0050–u0059)
+  - `User` → **100** rows
+  - `xyz` → no rows, empty-state message
 
 ---
 
