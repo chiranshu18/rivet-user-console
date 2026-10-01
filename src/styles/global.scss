@@ -56,7 +56,8 @@ a {
 a,
 button,
 input,
-select {
+select,
+[tabindex]:not([tabindex='-1']) {
   &:focus-visible {
     @include focus-ring;
   }

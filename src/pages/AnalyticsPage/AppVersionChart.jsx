@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useChartTheme } from '../../styles/chartTheme';
+import { CHART_KEYBOARD_HINT, useChartTheme } from '../../styles/chartTheme';
 import styles from './AnalyticsPage.module.scss';
 
 const MIN_BAR_SLOT_PX = 22;
@@ -12,7 +12,12 @@ function AppVersionChart({ data }) {
     <div className={styles.horizontalScroll}>
       <div style={{ minWidth: data.length * MIN_BAR_SLOT_PX }}>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <BarChart
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+            title="App version distribution bar chart"
+            desc={CHART_KEYBOARD_HINT}
+          >
             <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="version"

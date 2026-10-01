@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useChartTheme } from '../../styles/chartTheme';
+import { CHART_KEYBOARD_HINT, useChartTheme } from '../../styles/chartTheme';
 import { formatDate, formatShortDate } from '../../utils/formatDate';
 
 /** @param {{ data: { date: string, value: number }[] }} props */
@@ -16,7 +16,12 @@ function DailyActiveUsersChart({ data }) {
 
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+      <LineChart
+        data={data}
+        margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+        title="Daily active users line chart"
+        desc={CHART_KEYBOARD_HINT}
+      >
         <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="date"

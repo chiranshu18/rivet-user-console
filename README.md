@@ -21,6 +21,9 @@ The full spec, metric definitions, decision log, and per-phase manual test check
 A light/dark theme toggle sits in the header. The first visit follows the OS setting; a manual
 choice is remembered in `localStorage`.
 
+The app is keyboard accessible: visible focus rings, a "Skip to main content" link, Esc closes the
+image modal (Tab stays inside it while open), and charts can be explored with the arrow keys.
+
 ## Getting started
 
 Requires Node.js 20+ (required by React Router 7; developed on Node 22) and npm.

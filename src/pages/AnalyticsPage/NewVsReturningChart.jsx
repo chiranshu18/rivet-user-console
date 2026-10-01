@@ -1,5 +1,5 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { useChartTheme } from '../../styles/chartTheme';
+import { CHART_KEYBOARD_HINT, useChartTheme } from '../../styles/chartTheme';
 
 const formatPercent = (fraction) => `${(fraction * 100).toFixed(1)}%`;
 
@@ -11,8 +11,9 @@ function NewVsReturningChart({ data }) {
 
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
+      <PieChart title="New vs returning users pie chart" desc={CHART_KEYBOARD_HINT}>
         <Pie
+          rootTabIndex={-1}
           data={data}
           dataKey="value"
           nameKey="name"

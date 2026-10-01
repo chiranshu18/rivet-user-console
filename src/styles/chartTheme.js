@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 
+/** Screen-reader hint for recharts' keyboard support (charts are Tab stops; arrows move the tooltip). */
+export const CHART_KEYBOARD_HINT =
+  'Use the left and right arrow keys to move between data points; press Enter to show or hide details.';
+
 const COLOR_VARIABLES = {
   primary: '--color-primary',
   grid: '--color-border',

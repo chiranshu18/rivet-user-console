@@ -180,7 +180,7 @@ CSV files are copied from `resources/` to `public/data/` and fetched at runtime
 | Header             | Name, User ID, Status badge (context; PRD-required fields below)                                         |
 | PRD fields         | Join Time, App Version, Device Info, Location, Language (full name)                                     |
 | Thumbnail          | `profile_thumbnail_url`; click opens modal with `profile_full_url`                                       |
-| Modal close        | Close button **and** backdrop click (Esc is part of the bonus a11y task)                                 |
+| Modal close        | Close button, backdrop click, or **Esc** (added in bonus 8.2); Tab stays inside the modal while open      |
 | Search by User ID  | Input + "Go" button; submit on Enter or click. **Exact**, case-insensitive, trimmed. Found → navigate to `/user/<id>`. Not found → inline "User not found" message under the input |
 | Back navigation    | "Back to Users" link → `/users`                                                                          |
 | Sessions link      | "View Sessions" button → `/user/:id/sessions`                                                            |
@@ -382,7 +382,7 @@ public/data/*.csv ──fetch──▶ csvClient (PapaParse, cached) ──▶ u
 | `Pagination`         | `page`, `pageCount`, `pageSize`, `pageSizeOptions`, `total`, `onPageChange`, `onPageSizeChange` | Users, Sessions |
 | `SearchInput`        | `value`, `onChange`, `placeholder`                                              | Users                    |
 | `MultiSelectFilter`  | `label`, `options`, `selected[]`, `onChange`                                    | Users (Status), Sessions (Device) |
-| `Modal`              | `isOpen`, `onClose`, `title`, `children` (closes on button + backdrop; locks page scroll; focuses Close on open and restores focus on close) | User Details |
+| `Modal`              | `isOpen`, `onClose`, `title`, `children` (closes on button, backdrop, or Esc; traps Tab inside; locks page scroll; focuses Close on open and restores focus on close) | User Details |
 | `SearchForm`         | `label`, `placeholder`, `value`, `onChange`, `onSubmit`, `error` (submit on Enter/button, inline error) | User Details |
 | `NotFoundState`      | `code?`, `title`, `message?`, `linkTo?`, `linkLabel?`                           | 404 page, User Details, User Sessions |
 | `PageHeader`         | `title`, `subtitle?`                                                            | Users, User Sessions     |
@@ -418,7 +418,7 @@ previous phase's checklist passes. Expected values below are taken from the actu
 | 5     | User Sessions                          | Done        |
 | 6     | Analytics Dashboard                    | Done        |
 | 7     | Responsive polish & final QA           | Done        |
-| 8     | Bonus features                         | In progress (dark mode done; rest deferred) |
+| 8     | Bonus features                         | In progress (dark mode + keyboard a11y done; rest deferred) |
 
 ---
 
@@ -631,7 +631,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | Light/dark theme toggle                                          | Done (8.1)  |
 | Persist filters (query params and/or localStorage)               | Not started |
 | Export filtered data to CSV                                      | Not started |
-| Keyboard accessibility (Tab focus, **Esc to close modal**)       | Not started |
+| Keyboard accessibility (Tab focus, **Esc to close modal**)       | Done (8.2)  |
 | Deploy to Vercel/Netlify (includes SPA refresh/rewrite handling) | Not started |
 
 #### 8.1 — Light/dark theme toggle
@@ -668,6 +668,40 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 - [ ] The toggle is reachable with Tab and shows the focus ring; Enter/Space toggles it.
 - [ ] At 375px the header (brand, nav, toggle) wraps without overflow.
 
+#### 8.2 — Keyboard accessibility (Tab focus, Esc to close modal)
+
+**Behavior**
+- Every interactive element is reachable with Tab in visual order and shows a visible focus ring
+  (keyboard focus only, via `:focus-visible`). Already true for links, buttons, inputs, selects,
+  and filter chips; now also for any element made focusable with `tabindex` (e.g. charts).
+- **Skip link:** the first Tab on any page shows "Skip to main content" at the top-left; Enter
+  moves focus to `<main>`, skipping the header (URL is not changed).
+- **Image modal:** focus moves to Close on open; **Esc** closes it; Tab / Shift+Tab stay inside
+  the dialog; on close, focus returns to the thumbnail. Close button and backdrop click still work.
+- **Charts:** each chart is one Tab stop (recharts' built-in keyboard support). Left/Right arrows
+  move the tooltip between data points; Enter shows/hides it. Each chart has an accessible name
+  and a keyboard hint (`title` / `desc`). The pie's extra Tab stop was removed (`rootTabIndex={-1}`).
+
+**Implementation**
+1. `Modal.jsx`: document `keydown` listener while open: Esc → `onClose`; Tab / Shift+Tab wrap
+   between the first and last focusable elements in the dialog. Close button tooltip "Close (Esc)".
+2. `Layout.jsx`: skip link + `<main id="main" tabIndex={-1}>`.
+3. `global.scss`: focus ring also on `[tabindex]:not([tabindex='-1'])`.
+4. Charts: `title` + `desc` (`CHART_KEYBOARD_HINT` in `chartTheme.js`); Pie `rootTabIndex={-1}`.
+
+**Manual test checklist** (use only the keyboard)
+- [ ] On `/users`, the first Tab shows "Skip to main content"; Enter, then Tab, lands on the search input.
+- [ ] Tab order on `/users`: skip link → brand → Users → Analytics → theme toggle → search →
+      status chips → Join Time sort → table links → page size → Prev/Next. Every stop has a visible ring.
+- [ ] Space toggles a status chip; Enter/Space on "Join Time" cycles the sort.
+- [ ] `/user/u0002`: Tab to the thumbnail, press Enter → modal opens with focus on ✕. Tab and
+      Shift+Tab stay on ✕ (nothing behind the modal gets focus). Esc closes it and focus is back
+      on the thumbnail. Esc again does nothing.
+- [ ] Modal still closes with the ✕ button and with a backdrop click.
+- [ ] `/analytics`: Tab reaches each of the 3 charts (ring around the chart); Left/Right arrows
+      show the tooltip moving across points/bars/slices.
+- [ ] Mouse clicks do not leave focus rings behind (rings appear only for keyboard focus).
+
 ---
 
 ## 10. Decision Log
@@ -692,7 +726,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | 16 | Details "Search by User ID"   | Exact ID on submit; inline "User not found"                              |
 | 17 | Unknown user ID               | In-page "User not found" state                                           |
 | 18 | Sessions header               | Name + ID + link back to details                                         |
-| 19 | Modal close                   | Close button + backdrop click (Esc in bonus)                             |
+| 19 | Modal close                   | Close button + backdrop click + Esc (Esc added in bonus 8.2)             |
 | 20 | App version chart             | Exact versions, semver ascending                                         |
 | 21 | Data quirks                   | Displayed as-is                                                          |
 | 22 | Analytics metric sources      | Implementer's choice, "consistent with Users table" — see Section 6      |
@@ -708,6 +742,7 @@ Picked up one at a time, only when asked. Candidates from the PRD:
 | 32 | Unused dependencies           | Removed `web-vitals`, `@testing-library/*`, `src/setupTests.js`, and the `npm test` script (testing is manual only) |
 | 33 | Node version                  | Node 20+ (React Router 7 requires it)                                     |
 | 34 | Theme (bonus 8.1)             | Light + dark. Default follows the OS; a manual choice is saved in `localStorage` and wins. Toggle is an icon button in the header. Colors are CSS custom properties switched by `data-theme` on `<html>` |
+| 35 | Keyboard a11y (bonus 8.2)     | Esc closes the modal and Tab is trapped inside it; skip-to-content link; charts keep recharts' keyboard layer (one Tab stop each, named, with focus ring) |
 
 ### Implementer assumptions (minor, change freely)
 
@@ -722,8 +757,8 @@ Picked up one at a time, only when asked. Candidates from the PRD:
   as the React key.
 - Sessions empty-state text: "No sessions recorded for this user." (no data) vs "No sessions match
   the selected device." (filtered out).
-- Modal locks page scroll while open and returns focus to the thumbnail on close (Esc is still in
-  the bonus task).
+- Modal locks page scroll while open and returns focus to the thumbnail on close (Esc and the Tab
+  trap were added in bonus 8.2).
 - Analytics: each card/chart shows a short description of its data source (from
   `METRIC_DESCRIPTIONS` in `metrics.js`, so it updates when a metric definition changes).
 - Analytics: DAU x-axis labels are `07 Sep`, tooltips `07 Sep 2025`; the bar chart's y-axis stops
